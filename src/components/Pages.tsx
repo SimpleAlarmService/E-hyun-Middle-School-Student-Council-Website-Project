@@ -441,7 +441,7 @@ const EVENTS_TABS = [
   { label: '체육대회/이현제', slug: CATEGORY_SLUGS.sportsDay },
 ] as const;
 
-export const EventsPage = () => {
+export const EventsPage = ({ onSelectPost }: { onSelectPost?: (id: number) => void }) => {
   const [activeTab, setActiveTab] = useState(0);
 
   const { data: events, isLoading, error } = usePosts({
@@ -481,7 +481,7 @@ export const EventsPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {events.map((event) => (
               <Fragment key={event.id}>
-                <EventPostCard post={event} />
+                <EventPostCard post={event} onSelectPost={onSelectPost} />
               </Fragment>
             ))}
           </div>
@@ -492,7 +492,7 @@ export const EventsPage = () => {
 };
 
 /** 행사 카드 (EventsPage 전용) */
-const EventPostCard = ({ post }: { post: PostCardData }) => {
+const EventPostCard = ({ post, onSelectPost }: { post: PostCardData; onSelectPost?: (id: number) => void }) => {
   const status = deriveEventStatus(/* ISO date from rawPost — use display date as fallback */ post.date);
   // status 표시 레이블·색상
   const statusLabel = status === 'upcoming' ? '예정' : status === 'ongoing' ? '진행중' : '종료';
@@ -503,7 +503,13 @@ const EventPostCard = ({ post }: { post: PostCardData }) => {
     : 'bg-slate-500 text-white';
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow group">
+    <div
+      className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow group cursor-pointer"
+      onClick={() => onSelectPost?.(post.id)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === 'Enter' && onSelectPost?.(post.id)}
+    >
       <div className="h-48 bg-slate-100 relative">
         {post.imageUrl ? (
           <img

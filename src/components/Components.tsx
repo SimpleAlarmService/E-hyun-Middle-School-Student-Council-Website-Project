@@ -218,6 +218,7 @@ export const MainVisual = () => {
     {
       id:       1,
       bg:       'from-blue-900 to-blue-700',
+      image:    '/banner1.png',
       title:    '학생을 위한, 학생에 의한 자치회',
       subtitle: '2026학년도 이현중학교 학생자치회 공식 출범',
     },
@@ -250,8 +251,16 @@ export const MainVisual = () => {
       {slides.map((slide, index) => (
         <div
           key={slide.id}
-          className={`absolute inset-0 transition-opacity duration-700 ease-in-out bg-gradient-to-br ${slide.bg} ${index === currentSlide ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${index === currentSlide ? 'opacity-100' : 'opacity-0'}`}
         >
+          {'image' in slide && slide.image ? (
+            <>
+              <img src={slide.image} alt={slide.title} className="absolute inset-0 w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-black/40" />
+            </>
+          ) : (
+            <div className={`absolute inset-0 bg-gradient-to-br ${slide.bg}`} />
+          )}
           <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-12">
             <motion.div
               initial={{ y: 20, opacity: 0 }}

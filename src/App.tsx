@@ -343,7 +343,17 @@ export default function App() {
         return <ParticipationPage />;
 
       case 'events':
-        return <EventsPage />;
+        return <EventsPage onSelectPost={(id) => navigate('event-detail', id)} />;
+
+      case 'event-detail':
+        return selectedPostId ? (
+          <NoticeDetailPage
+            postId={selectedPostId}
+            onBack={() => navigate('events')}
+          />
+        ) : (
+          <EventsPage onSelectPost={(id) => navigate('event-detail', id)} />
+        );
 
       case 'archive':
         return <ArchivePage />;
