@@ -137,16 +137,34 @@ export const IntroPage = () => (
         <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
           <Users className="text-blue-600" /> 조직 구성
         </h2>
+
+        {/* 부서 */}
+        <h3 className="text-lg font-semibold text-slate-700 mb-4">부서</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          {[
+            { role: '홍보부',     desc: '소식지 발행 및 SNS 홍보 활동' },
+            { role: '총무부',     desc: '예산 관리 및 행정 업무 지원' },
+            { role: '환경미화부', desc: '교내 환경 정비 및 미화 활동' },
+            { role: '생활안전부', desc: '교내 안전 지도 및 캠페인 운영' },
+            { role: '학습부',     desc: '학습 분위기 조성 및 학습 지원' },
+            { role: '도서부',     desc: '도서실 운영 및 독서 문화 활성화' },
+            { role: '체육부',     desc: '스포츠 행사 및 체육대회 주관' },
+          ].map((dept) => (
+            <div key={dept.role} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:border-blue-300 transition-colors">
+              <h3 className="font-bold text-slate-900 mb-2">{dept.role}</h3>
+              <p className="text-sm text-slate-500">{dept.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* 학년 대표 */}
+        <h3 className="text-lg font-semibold text-slate-700 mb-4">학년 대표 · 서기</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
-            { role: '회장단',     desc: '학생회 운영 총괄 및 대외 활동' },
-            { role: '기획부',     desc: '주요 행사 기획 및 예산 관리' },
-            { role: '홍보부',     desc: '소식지 발행 및 SNS 운영' },
-            { role: '체육부',     desc: '스포츠 리그 및 체육대회 주관' },
-            { role: '문화예술부', desc: '축제 및 버스킹 공연 기획' },
-            { role: '봉사부',     desc: '교내외 봉사활동 및 환경 정화' },
-            { role: '학습지원부', desc: '자율동아리 지원 및 학습 캠페인' },
-            { role: '생활안전부', desc: '교내 안전 및 캠페인 활동' },
+            { role: '1학년 학년대표', desc: '1학년 학생 의견 수렴 및 전달' },
+            { role: '2학년 학년대표', desc: '2학년 학생 의견 수렴 및 전달' },
+            { role: '3학년 학년대표', desc: '3학년 학생 의견 수렴 및 전달' },
+            { role: '3학년 서기',     desc: '회의록 작성 및 자료 정리' },
           ].map((dept) => (
             <div key={dept.role} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:border-blue-300 transition-colors">
               <h3 className="font-bold text-slate-900 mb-2">{dept.role}</h3>

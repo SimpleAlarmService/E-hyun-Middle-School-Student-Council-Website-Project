@@ -27,6 +27,7 @@ import {
   X,
   Search,
   Map,
+  Globe,
   MessageCircle,
   Lightbulb,
   Image as ImageIcon,
@@ -545,18 +546,20 @@ export const Footer = () => (
           <ul className="space-y-2 text-sm">
             <li className="flex items-start gap-2">
               <Map size={16} className="mt-0.5 shrink-0" />
-              <span>경기도 용인시 수지구 이현로 34<br />이현중학교 학생자치회실 (본관 2층)</span>
+              <span>경기도 용인시 수지구 진산로34번길 39<br />이현중학교 학생자치회실</span>
             </li>
             <li className="flex items-center gap-2">
-              <MessageCircle size={16} />
-              <span>카카오톡 채널: @EHSC_Official</span>
+              <Globe size={16} className="shrink-0" />
+              <a href="https://www.goeyi.kr/e-hyun-m/main.do" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
+                이현중학교 공식 홈페이지
+              </a>
             </li>
           </ul>
         </div>
       </div>
 
       <div className="border-t border-slate-800 pt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-xs">
-        <p>© 2026 Ihyeon Middle School Student Council. All rights reserved.</p>
+        <p>© 2026 E-Hyun Middle School Student Council. All rights reserved.</p>
         <div className="flex gap-4">
           <span className="hover:text-white cursor-default">개인정보처리방침</span>
           <span className="hover:text-white cursor-default">이용약관</span>
