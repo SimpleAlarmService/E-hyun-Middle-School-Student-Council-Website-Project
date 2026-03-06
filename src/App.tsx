@@ -96,8 +96,10 @@ const HomePage = ({ navigate }: HomePageProps) => {
         {/* 좌측 컬럼 */}
         <div className="lg:col-span-4 flex flex-col gap-6">
           <div className="h-[320px]">
-            {/* Notices: onNavigate 연결로 더보기 클릭 시 공지 페이지로 이동 */}
-            <Notices onNavigate={navigate} />
+            <Notices
+              onNavigate={navigate}
+              onSelectPost={(id) => navigate('notice-detail', id)}
+            />
           </div>
           <div className="h-[280px]">
             <QuickLinks onNavigate={navigate} />

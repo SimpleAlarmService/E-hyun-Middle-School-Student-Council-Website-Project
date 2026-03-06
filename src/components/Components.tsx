@@ -313,7 +313,13 @@ function getNoticeBadgeClass(categoryName: string): string {
   return 'bg-slate-100 text-slate-600 border border-slate-200';
 }
 
-export const Notices = ({ onNavigate }: { onNavigate?: (page: string) => void }) => {
+export const Notices = ({
+  onNavigate,
+  onSelectPost,
+}: {
+  onNavigate?:   (page: string) => void;
+  onSelectPost?: (postId: number) => void;
+}) => {
   const [activeTab, setActiveTab] = useState('전체');
   const { data: posts, isLoading, error } = useHomeNotices();
 
@@ -377,7 +383,14 @@ export const Notices = ({ onNavigate }: { onNavigate?: (page: string) => void })
             {filteredPosts.map((post) => {
               const catName = post.categories[0] ?? '';
               return (
-                <li key={post.id} className="group cursor-pointer">
+                <li
+                  key={post.id}
+                  className="group cursor-pointer"
+                  onClick={() => onSelectPost?.(post.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && onSelectPost?.(post.id)}
+                >
                   <div className="flex items-start gap-3">
                     {catName && (
                       <span className={`px-2 py-0.5 text-[10px] rounded-full font-medium shrink-0 mt-0.5 ${getNoticeBadgeClass(catName)}`}>

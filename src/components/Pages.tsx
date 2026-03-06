@@ -193,7 +193,7 @@ interface NoticesPageProps {
 export const NoticesPage = ({ onSelectPost }: NoticesPageProps) => {
   const { data: posts, isLoading, error } = usePosts({
     categorySlug: CATEGORY_SLUGS.notices,
-    perPage: 10,
+    perPage: 20,
   });
 
   return (
