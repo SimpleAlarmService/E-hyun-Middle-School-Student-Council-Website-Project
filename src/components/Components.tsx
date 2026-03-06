@@ -116,7 +116,7 @@ export const Header = ({ onNavigate }: { onNavigate: (page: string) => void }) =
         <div className="flex justify-between items-center h-20">
           {/* 로고 */}
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => handleNavigate('home')}>
-            <div className="w-10 h-10 bg-blue-900 rounded-full flex items-center justify-center text-white font-bold text-lg">EH</div>
+            <img src="/logo.png" alt="이현중학교 학생자치회 로고" className="w-10 h-10 object-contain" />
             <div className="flex flex-col">
               <span className="text-xl font-bold text-slate-900 leading-none tracking-tight">EHSC Connect</span>
               <span className="text-xs text-slate-500 font-medium mt-1">이현중학교 학생자치회</span>
@@ -520,7 +520,7 @@ export const Footer = () => (
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
         <div className="col-span-1 md:col-span-2">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center text-white font-bold text-sm">EH</div>
+            <img src="/logo.png" alt="이현중학교 학생자치회 로고" className="w-8 h-8 object-contain" />
             <span className="text-lg font-bold text-white">EHSC Connect</span>
           </div>
           <p className="text-sm leading-relaxed mb-4 max-w-md">
