@@ -138,7 +138,8 @@ export interface PostCardData {
   id: number;
   slug: string;
   title: string;         // HTML 제거된 순수 텍스트
-  date: string;          // "2026.03.07" 형식
+  date: string;          // "2026.03.07" 형식 (표시용)
+  rawDate: string;       // ISO 8601 원본 날짜 (예: "2026-03-07T10:30:00", 상태 계산용)
   excerpt: string;       // HTML 제거 후 잘린 요약 텍스트
   imageUrl: string;      // 대표 이미지 URL (없으면 빈 문자열 '')
   imageAlt: string;      // 이미지 alt 텍스트

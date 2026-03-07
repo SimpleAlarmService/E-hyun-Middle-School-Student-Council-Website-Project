@@ -74,22 +74,6 @@ const InlineEmpty = ({ message }: { message: string }) => (
   </div>
 );
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// TopBar
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-export const TopBar = ({ onNavigate }: { onNavigate: (page: string) => void }) => (
-  <div className="bg-slate-900 text-white text-xs py-2 px-4 border-b border-slate-800">
-    <div className="max-w-7xl mx-auto flex justify-between items-center">
-      <span className="opacity-80">이현중학교 학생자치회 공식 플랫폼</span>
-      <div className="flex items-center gap-4">
-        <button onClick={() => onNavigate('home')} className="hover:text-blue-300 transition-colors">홈</button>
-        <span className="text-slate-700">|</span>
-        <button onClick={() => onNavigate('sitemap')} className="hover:text-blue-300 transition-colors">사이트맵</button>
-      </div>
-    </div>
-  </div>
-);
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Header
@@ -100,7 +84,7 @@ export const Header = ({ onNavigate }: { onNavigate: (page: string) => void }) =
 
   const menuItems = [
     { title: '학생자치회', id: 'intro',         subItems: ['학생회 소개', '부서 소개'] },
-    { title: '공지사항',   id: 'notices',        subItems: ['학생자치회 공지', '행사 공지'] },
+    { title: '공지사항',   id: 'notices',        subItems: [] },
     { title: '학생참여',   id: 'participation',  subItems: ['건의함', '행사 제안'] },
     { title: '학생회 행사',id: 'events',         subItems: ['스포츠라이트', '행사 안내', '체육대회/이현제'] },
     { title: '자료실',     id: 'archive',        subItems: ['회의록', '기타자료실'] },
@@ -537,7 +521,7 @@ export const EventCard = ({ id, title, date, status, imageUrl, imageAlt, onNavig
 // Footer
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-export const Footer = () => (
+export const Footer = ({ onNavigate }: { onNavigate?: (page: string) => void }) => (
   <footer className="bg-slate-900 text-slate-400 py-10 mt-12 border-t border-slate-800">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
@@ -553,14 +537,38 @@ export const Footer = () => (
           </p>
         </div>
 
-        <div>
+        <div className="col-span-1 md:col-span-2">
           <h4 className="text-white font-bold mb-4">사이트맵</h4>
-          <ul className="space-y-2 text-sm">
-            <li><span className="hover:text-white transition-colors cursor-default">학생자치회 소개</span></li>
-            <li><span className="hover:text-white transition-colors cursor-default">공지사항</span></li>
-            <li><span className="hover:text-white transition-colors cursor-default">학생참여</span></li>
-            <li><span className="hover:text-white transition-colors cursor-default">자료실</span></li>
-          </ul>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 text-sm">
+            {[
+              { title: '학생자치회', page: 'intro',        subs: ['학생회 소개', '부서 소개'] },
+              { title: '공지사항',   page: 'notices',      subs: [] },
+              { title: '학생참여',   page: 'participation',subs: ['건의함', '행사 제안'] },
+              { title: '학생회 행사',page: 'events',       subs: ['스포츠라이트', '행사 안내', '체육대회/이현제'] },
+              { title: '자료실',     page: 'archive',      subs: ['회의록', '기타자료실'] },
+            ].map(({ title, page, subs }) => (
+              <div key={page}>
+                <button
+                  onClick={() => onNavigate?.(page)}
+                  className="text-white font-semibold hover:text-blue-300 transition-colors text-left mb-2 block"
+                >
+                  {title}
+                </button>
+                <ul className="space-y-1">
+                  {subs.map((sub) => (
+                    <li key={sub}>
+                      <button
+                        onClick={() => onNavigate?.(page)}
+                        className="text-slate-400 hover:text-white transition-colors text-left flex items-center gap-1"
+                      >
+                        <span className="text-slate-600">›</span> {sub}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div>
@@ -568,7 +576,7 @@ export const Footer = () => (
           <ul className="space-y-2 text-sm">
             <li className="flex items-start gap-2">
               <Map size={16} className="mt-0.5 shrink-0" />
-              <span>경기도 용인시 수지구 진산로34번길 39<br />이현중학교 학생자치회실</span>
+              <span>경기도 용인시 수지구 진산로34번길 39<br />이현중학교 별관2층 문화자치부</span>
             </li>
             <li className="flex items-center gap-2">
               <Globe size={16} className="shrink-0" />
@@ -583,7 +591,6 @@ export const Footer = () => (
       <div className="border-t border-slate-800 pt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-xs">
         <p>© 2026 E-Hyun Middle School Student Council. All rights reserved.</p>
         <div className="flex gap-4">
-          <span className="hover:text-white cursor-default">개인정보처리방침</span>
           <span className="hover:text-white cursor-default">이용약관</span>
         </div>
       </div>

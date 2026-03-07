@@ -303,6 +303,7 @@ export function mapPostToCardData(post: WPPost): PostCardData {
     slug:       post.slug,
     title:      stripHtml(post.title.rendered),
     date:       formatShortDate(post.date),
+    rawDate:    post.date,
     excerpt:    truncateText(stripHtml(post.excerpt.rendered), 90),
     imageUrl:   extractFeaturedImageUrl(post),
     imageAlt:   stripHtml(post.title.rendered),
