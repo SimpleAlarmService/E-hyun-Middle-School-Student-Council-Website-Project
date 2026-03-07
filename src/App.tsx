@@ -107,8 +107,6 @@ const HomePage = ({ navigate }: HomePageProps) => {
             />
           </div>
           <QuickLinks onNavigate={navigate} />
-          {/* 오늘의 급식 */}
-          <MealCard />
         </div>
 
         {/* 우측 컬럼 - 메인 비주얼 — 모바일에서 최상단 */}
@@ -241,6 +239,9 @@ const HomePage = ({ navigate }: HomePageProps) => {
         <SchoolScheduleCard />
         <TimeTableCard />
       </div>
+
+      {/* ── 오늘의 급식 ── */}
+      <MealCard />
 
       {/* ── 섹션: 활동 갤러리 ── */}
       <section className="py-8">
