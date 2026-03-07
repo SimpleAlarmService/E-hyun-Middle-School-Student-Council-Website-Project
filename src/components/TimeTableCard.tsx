@@ -118,7 +118,7 @@ export const TimeTableCard = () => {
   const [classNm, setClassNm] = useState<number>(1);
   const [monday,  setMonday]  = useState<Date>(() => getMondayOf(new Date()));
 
-  const { grid, weekDates, maxPeriod, isLoading, error } = useTimeTable(grade, classNm, monday);
+  const { grid, weekDates, maxPeriod, isLoading, error, isFallback } = useTimeTable(grade, classNm, monday);
 
   const thisMonday = getMondayOf(new Date());
   const isThisWeek =
@@ -209,7 +209,7 @@ export const TimeTableCard = () => {
             <ChevronLeft size={18} />
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-center">
             <span className="text-sm font-medium text-slate-700">{weekLabel}</span>
             {!isThisWeek && (
               <button
@@ -218,6 +218,11 @@ export const TimeTableCard = () => {
               >
                 이번 주
               </button>
+            )}
+            {isFallback && (
+              <span className="text-xs text-amber-600 font-medium px-2 py-0.5 rounded-full bg-amber-50 border border-amber-100">
+                최근 등록 시간표
+              </span>
             )}
           </div>
 
