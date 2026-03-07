@@ -97,23 +97,21 @@ const HomePage = ({ navigate }: HomePageProps) => {
 
       {/* ── 상단 그리드: 공지사항 위젯 + 퀵링크 + 급식 + 메인비주얼 ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* 좌측 컬럼 */}
-        <div className="lg:col-span-4 flex flex-col gap-4">
+        {/* 좌측 컬럼 — 모바일에서는 슬라이드 아래로 이동 */}
+        <div className="order-2 lg:order-1 lg:col-span-4 flex flex-col gap-4">
           <div className="h-[280px]">
             <Notices
               onNavigate={navigate}
               onSelectPost={(id) => navigate('notice-detail', id)}
             />
           </div>
-          <div className="h-[220px]">
-            <QuickLinks onNavigate={navigate} />
-          </div>
+          <QuickLinks onNavigate={navigate} />
           {/* 오늘의 급식 */}
           <MealCard />
         </div>
 
-        {/* 우측 컬럼 - 메인 비주얼 */}
-        <div className="lg:col-span-8">
+        {/* 우측 컬럼 - 메인 비주얼 — 모바일에서 최상단 */}
+        <div className="order-1 lg:order-2 lg:col-span-8">
           <div className="h-full min-h-[400px] lg:min-h-[624px]">
             <MainVisual />
           </div>

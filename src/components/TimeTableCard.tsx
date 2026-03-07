@@ -121,6 +121,7 @@ export const TimeTableCard = () => {
   const { grid, weekDates, maxPeriod, isLoading, error, isFallback } = useTimeTable(grade, classNm, monday);
 
   const thisMonday = getMondayOf(new Date());
+  // 사용자가 ← → 로 이번 주를 벗어났는지 체크 (monday 기준)
   const isThisWeek =
     monday.getFullYear() === thisMonday.getFullYear() &&
     monday.getMonth()    === thisMonday.getMonth() &&
