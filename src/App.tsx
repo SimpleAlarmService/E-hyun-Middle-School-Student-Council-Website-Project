@@ -119,15 +119,6 @@ const HomePage = ({ navigate }: HomePageProps) => {
         </div>
       </div>
 
-      {/* ── 학교 기본정보 ── */}
-      <SchoolInfoCard />
-
-      {/* ── 학사일정 + 시간표 (2컬럼) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:items-start">
-        <SchoolScheduleCard />
-        <TimeTableCard />
-      </div>
-
       {/* ── 섹션: 진행 중인 행사 ── */}
       <section className="py-8">
         <div className="flex justify-between items-end mb-6">
@@ -240,6 +231,15 @@ const HomePage = ({ navigate }: HomePageProps) => {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* ── 학교 기본정보 ── */}
+      <SchoolInfoCard />
+
+      {/* ── 학사일정 + 시간표 (2컬럼) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:items-start">
+        <SchoolScheduleCard />
+        <TimeTableCard />
       </div>
 
       {/* ── 섹션: 활동 갤러리 ── */}
