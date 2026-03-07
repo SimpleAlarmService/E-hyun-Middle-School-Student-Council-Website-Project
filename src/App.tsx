@@ -22,6 +22,9 @@ import {
   EventCard,
   Footer,
 } from './components/Components';
+import { MealCard } from './components/MealCard';
+import { SchoolInfoCard } from './components/SchoolInfoCard';
+import { TimeTableCard } from './components/TimeTableCard';
 import {
   IntroPage,
   NoticesPage,
@@ -92,28 +95,36 @@ const HomePage = ({ navigate }: HomePageProps) => {
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-      {/* ── 상단 그리드: 공지사항 위젯 + 퀵링크 + 메인비주얼 ── */}
+      {/* ── 상단 그리드: 공지사항 위젯 + 퀵링크 + 급식 + 메인비주얼 ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* 좌측 컬럼 */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
-          <div className="h-[320px]">
+        <div className="lg:col-span-4 flex flex-col gap-4">
+          <div className="h-[280px]">
             <Notices
               onNavigate={navigate}
               onSelectPost={(id) => navigate('notice-detail', id)}
             />
           </div>
-          <div className="h-[280px]">
+          <div className="h-[220px]">
             <QuickLinks onNavigate={navigate} />
           </div>
+          {/* 오늘의 급식 */}
+          <MealCard />
         </div>
 
         {/* 우측 컬럼 - 메인 비주얼 */}
-        <div className="lg:col-span-8 h-full">
+        <div className="lg:col-span-8">
           <div className="h-full min-h-[400px] lg:min-h-[624px]">
             <MainVisual />
           </div>
         </div>
       </div>
+
+      {/* ── 학교 기본정보 ── */}
+      <SchoolInfoCard />
+
+      {/* ── 시간표 ── */}
+      <TimeTableCard />
 
       {/* ── 섹션: 진행 중인 행사 ── */}
       <section className="py-8">
