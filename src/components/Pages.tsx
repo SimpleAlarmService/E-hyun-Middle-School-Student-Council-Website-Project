@@ -386,41 +386,155 @@ export const NoticeDetailPage = ({ postId, onBack }: NoticeDetailPageProps) => {
 // ParticipationPage — 학생참여
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //
-// 건의함·행사제안 링크 구조는 정적 유지 (외부 폼 연결용)
+// 카드 클릭 → 별도 form 페이지(suggestion / event-proposal)로 이동
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-export const ParticipationPage = () => (
+export const ParticipationPage = ({ onNavigate }: { onNavigate?: (page: string) => void }) => (
   <div className="pb-12">
     <PageHeader title="학생참여" subtitle="여러분의 목소리가 학교를 변화시킵니다." />
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-      <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mb-6">
-          <MessageSquare size={24} />
+
+      {/* 학생 건의함 */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 flex flex-col gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center shrink-0">
+            <MessageSquare size={24} />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-slate-800">학생 건의함</h2>
+            <p className="text-sm text-slate-500 mt-0.5">학교생활 불편함·개선사항을 제안해 주세요.</p>
+          </div>
         </div>
-        <h2 className="text-2xl font-bold text-slate-800 mb-4">학생 건의함</h2>
-        <p className="text-slate-600 mb-8">
-          학교생활 중 겪는 불편함이나 개선이 필요한 사항을 자유롭게 제안해 주세요.
-          학생자치회가 검토 후 학교 측에 전달하겠습니다.
+        <p className="text-slate-600 leading-relaxed">
+          이곳은 이현중학교 학생들이 학교생활과 관련하여 느낀 불편 사항이나
+          개선이 필요한 부분, 또는 학교 발전을 위한 다양한 의견을 전달할 수 있는
+          공간입니다.<br /><br />
+          접수된 건의사항은 학생자치회에서 확인한 후 필요에 따라 학교와 함께
+          검토합니다.
         </p>
-        {/* TODO: 외부 구글 폼 또는 카카오 폼 링크 연결 */}
-        <button className="w-full py-3 bg-amber-600 text-white font-bold rounded-xl hover:bg-amber-700 transition-colors">
+        <button
+          onClick={() => onNavigate?.('suggestion')}
+          className="mt-auto self-start inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl transition-colors"
+        >
+          <MessageSquare size={18} />
           건의 작성하기
         </button>
       </div>
 
-      <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center mb-6">
-          <Lightbulb size={24} />
+      {/* 행사 제안 */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 flex flex-col gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center shrink-0">
+            <Lightbulb size={24} />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-slate-800">행사 제안</h2>
+            <p className="text-sm text-slate-500 mt-0.5">새로운 행사 아이디어를 제안해 주세요.</p>
+          </div>
         </div>
-        <h2 className="text-2xl font-bold text-slate-800 mb-4">행사 제안</h2>
-        <p className="text-slate-600 mb-8">
-          학생들이 즐겁게 참여할 수 있는 새로운 행사 아이디어가 있다면 제안해 주세요.
-          여러분의 아이디어가 실제 행사가 될 수 있습니다.
+        <p className="text-slate-600 leading-relaxed">
+          학생 여러분의 작은 의견 하나하나가 학교를 변화시키는 중요한 시작이
+          될 수 있습니다. 학교생활과 관련된 다양한 생각과 의견을 자유롭게
+          작성해 주시기 바랍니다.<br /><br />
+          제안해 주신 행사 아이디어는 학생자치회가 검토하여 반영할 수 있도록
+          노력합니다.
         </p>
-        {/* TODO: 외부 구글 폼 또는 카카오 폼 링크 연결 */}
-        <button className="w-full py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition-colors">
+        <button
+          onClick={() => onNavigate?.('event-proposal')}
+          className="mt-auto self-start inline-flex items-center gap-2 px-6 py-3 bg-rose-500 hover:bg-rose-600 text-white font-semibold rounded-xl transition-colors"
+        >
+          <Lightbulb size={18} />
           아이디어 제안하기
         </button>
+      </div>
+
+    </div>
+  </div>
+);
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SuggestionPage — 학생 건의함 (Google Form 임베드)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const SuggestionPage = ({ onBack }: { onBack?: () => void }) => (
+  <div className="pb-12">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4">
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 mb-6 transition-colors"
+        >
+          ← 학생참여로 돌아가기
+        </button>
+      )}
+      <div className="flex items-center gap-4 mb-8">
+        <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center shrink-0">
+          <MessageSquare size={24} />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">학생 건의함</h1>
+          <p className="text-slate-500 mt-0.5">학교생활 불편함·개선사항을 제안해 주세요.</p>
+        </div>
+      </div>
+    </div>
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <iframe
+          src="https://docs.google.com/forms/d/e/1FAIpQLScwKCFGFVVnRft2H96WzOkpR1uaTsdA9YSnqtZjoiZhuJFJag/viewform?embedded=true"
+          width="100%"
+          height="900"
+          frameBorder="0"
+          marginHeight={0}
+          marginWidth={0}
+          title="학생 건의함"
+          className="block"
+        >
+          로딩 중…
+        </iframe>
+      </div>
+    </div>
+  </div>
+);
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// EventProposalPage — 행사 제안 (Google Form 임베드)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const EventProposalPage = ({ onBack }: { onBack?: () => void }) => (
+  <div className="pb-12">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4">
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 mb-6 transition-colors"
+        >
+          ← 학생참여로 돌아가기
+        </button>
+      )}
+      <div className="flex items-center gap-4 mb-8">
+        <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center shrink-0">
+          <Lightbulb size={24} />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">행사 제안</h1>
+          <p className="text-slate-500 mt-0.5">새로운 행사 아이디어를 제안해 주세요.</p>
+        </div>
+      </div>
+    </div>
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <iframe
+          src="https://docs.google.com/forms/d/e/1FAIpQLSdTH5U4batptXujtbZ3J4CV-fk1eVlzytq1BMeBsJVPy6KIvQ/viewform?embedded=true"
+          width="100%"
+          height="900"
+          frameBorder="0"
+          marginHeight={0}
+          marginWidth={0}
+          title="행사 제안"
+          className="block"
+        >
+          로딩 중…
+        </iframe>
       </div>
     </div>
   </div>
@@ -493,7 +607,7 @@ export const EventsPage = ({ onSelectPost }: { onSelectPost?: (id: number) => vo
 
 /** 행사 카드 (EventsPage 전용) */
 const EventPostCard = ({ post, onSelectPost }: { post: PostCardData; onSelectPost?: (id: number) => void }) => {
-  const status = deriveEventStatus(/* ISO date from rawPost — use display date as fallback */ post.date);
+  const status = deriveEventStatus(post.rawDate);
   // status 표시 레이블·색상
   const statusLabel = status === 'upcoming' ? '예정' : status === 'ongoing' ? '진행중' : '종료';
   const statusClass = status === 'upcoming'
@@ -634,7 +748,7 @@ export const ArchivePage = () => {
 export const SitemapPage = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
   const sitemapData = [
     { title: '학생자치회', id: 'intro',        items: ['학생회 소개', '부서 소개'] },
-    { title: '공지사항',   id: 'notices',       items: ['학생자치회 공지', '행사 공지'] },
+    { title: '공지사항',   id: 'notices',       items: [] },
     { title: '학생참여',   id: 'participation', items: ['건의함', '행사 제안'] },
     { title: '학생회 행사',id: 'events',        items: ['스포츠라이트', '행사 안내', '체육대회/이현제'] },
     { title: '자료실',     id: 'archive',       items: ['회의록', '기타자료실'] },

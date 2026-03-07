@@ -15,7 +15,6 @@
 
 import { useState, useEffect, useCallback, Fragment } from 'react';
 import {
-  TopBar,
   Header,
   MainVisual,
   Notices,
@@ -28,6 +27,8 @@ import {
   NoticesPage,
   NoticeDetailPage,
   ParticipationPage,
+  SuggestionPage,
+  EventProposalPage,
   EventsPage,
   ArchivePage,
   SitemapPage,
@@ -340,7 +341,13 @@ export default function App() {
         );
 
       case 'participation':
-        return <ParticipationPage />;
+        return <ParticipationPage onNavigate={navigate} />;
+
+      case 'suggestion':
+        return <SuggestionPage onBack={() => navigate('participation')} />;
+
+      case 'event-proposal':
+        return <EventProposalPage onBack={() => navigate('participation')} />;
 
       case 'events':
         return <EventsPage onSelectPost={(id) => navigate('event-detail', id)} />;
@@ -368,10 +375,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      <TopBar  onNavigate={navigate} />
-      <Header  onNavigate={navigate} />
+      <Header onNavigate={navigate} />
       {renderPage()}
-      <Footer />
+      <Footer onNavigate={navigate} />
     </div>
   );
 }
