@@ -25,6 +25,7 @@ import {
 import { MealCard } from './components/MealCard';
 import { SchoolInfoCard } from './components/SchoolInfoCard';
 import { TimeTableCard } from './components/TimeTableCard';
+import { SchoolScheduleCard } from './components/SchoolScheduleCard';
 import {
   IntroPage,
   NoticesPage,
@@ -121,8 +122,11 @@ const HomePage = ({ navigate }: HomePageProps) => {
       {/* ── 학교 기본정보 ── */}
       <SchoolInfoCard />
 
-      {/* ── 시간표 ── */}
-      <TimeTableCard />
+      {/* ── 학사일정 + 시간표 (2컬럼) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:items-start">
+        <SchoolScheduleCard />
+        <TimeTableCard />
+      </div>
 
       {/* ── 섹션: 진행 중인 행사 ── */}
       <section className="py-8">
