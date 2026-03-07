@@ -98,7 +98,7 @@ const HomePage = ({ navigate }: HomePageProps) => {
       {/* ── 상단 그리드: 공지사항 위젯 + 퀵링크 + 급식 + 메인비주얼 ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* 좌측 컬럼 — 모바일에서는 슬라이드 아래로 이동 */}
-        <div className="order-2 lg:order-1 lg:col-span-4 flex flex-col gap-4">
+        <div className="order-2 lg:order-1 lg:col-span-4 lg:self-start flex flex-col gap-4">
           <div className="h-[280px]">
             <Notices
               onNavigate={navigate}

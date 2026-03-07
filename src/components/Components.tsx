@@ -422,7 +422,7 @@ export const QuickLinks = ({ onNavigate }: { onNavigate: (page: string) => void 
   ];
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 h-full overflow-hidden">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
       <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
         <Search size={20} className="text-blue-600" />
         바로가기
