@@ -214,8 +214,40 @@ async function handleList(env: Env, url: URL): Promise<Response> {
     requestBody,
   );
 
+  const mapped: Record<string, unknown>[] = (data.results ?? []).map(mapPage);
+
+  // ── imageUrl 없는 게시글: 본문 첫 이미지 블록을 병렬 보완 ────────────────
+  //    대표이미지 속성 / 커버 둘 다 없는 경우 페이지 블록을 추가 조회합니다.
+  const noImageIdx = mapped
+    .map((_, i) => (mapped[i].imageUrl ? null : i))
+    .filter((i): i is number => i !== null);
+
+  if (noImageIdx.length > 0) {
+    await Promise.all(
+      noImageIdx.map(async (idx) => {
+        try {
+          const blocksData = await notionFetch(
+            env,
+            `/blocks/${mapped[idx].id}/children?page_size=10`,
+          );
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const firstImg = (blocksData.results ?? []).find((b: any) => b.type === 'image');
+          if (firstImg) {
+            const src =
+              firstImg.image?.type === 'external' ? (firstImg.image.external?.url ?? '')
+              : firstImg.image?.type === 'file'   ? (firstImg.image.file?.url   ?? '')
+              : '';
+            if (src) mapped[idx].imageUrl = src;
+          }
+        } catch {
+          // 블록 조회 실패 → 이미지 없는 상태 유지
+        }
+      }),
+    );
+  }
+
   return jsonResponse({
-    results:    (data.results ?? []).map(mapPage),
+    results:    mapped,
     hasMore:    data.has_more ?? false,
     nextCursor: data.next_cursor ?? null,
   });

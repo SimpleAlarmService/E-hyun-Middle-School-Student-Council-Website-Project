@@ -423,8 +423,31 @@ export const NoticeDetailPage = ({ postId, onBack }: NoticeDetailPageProps) => {
   const post   = detail.post;
   const blocks = detail.blocks;
 
+  // ── 대표 이미지 결정 ──────────────────────────────────────────
+  // 우선순위: 대표이미지 속성 > page.cover (Worker가 합쳐서 imageUrl로 반환)
+  //           > 본문 첫 번째 image 블록
+  const firstImageBlock = blocks.find((b) => b.type === 'image');
+  const firstBlockImageSrc = firstImageBlock?.image
+    ? firstImageBlock.image.type === 'external'
+      ? (firstImageBlock.image.external?.url ?? '')
+      : (firstImageBlock.image.file?.url ?? '')
+    : '';
+  const coverSrc = post.imageUrl || firstBlockImageSrc;
+
   return (
     <div className="pb-12">
+      {/* 대표 이미지 — 제목 헤더 위 전체 너비 배너 */}
+      {coverSrc && (
+        <div className="w-full max-h-72 overflow-hidden bg-slate-100">
+          <img
+            src={coverSrc}
+            alt={post.imageAlt || post.title}
+            className="w-full h-full object-cover"
+            loading="eager"
+          />
+        </div>
+      )}
+
       {/* 게시글 헤더 */}
       <div className="bg-white border-b border-slate-200 py-10 mb-8">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -456,17 +479,6 @@ export const NoticeDetailPage = ({ postId, onBack }: NoticeDetailPageProps) => {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        {/* 대표 이미지 */}
-        {post.imageUrl && (
-          <div className="rounded-xl overflow-hidden border border-slate-200">
-            <img
-              src={post.imageUrl}
-              alt={post.imageAlt || post.title}
-              className="w-full object-cover"
-              loading="lazy"
-            />
-          </div>
-        )}
 
         {/* 내용 속성 (DB 「내용」 필드가 있으면 블록보다 먼저 표시) */}
         {post.content && (
