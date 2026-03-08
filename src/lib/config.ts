@@ -52,8 +52,8 @@ export type CategoryValue = (typeof CATEGORIES)[CategoryKey];
 /** 기본 페이지당 게시글 수 */
 export const DEFAULT_PER_PAGE = 10;
 
-/** 메인 홈 공지사항 위젯 최대 표시 수 */
-export const HOME_NOTICES_COUNT = 5;
+/** 메인 홈 공지사항 위젯 최대 표시 수 (탭 필터용으로 여유있게 가져옴) */
+export const HOME_NOTICES_COUNT = 10;
 
 /** 메인 홈 진행 행사 최대 표시 수 */
 export const HOME_EVENTS_COUNT = 3;

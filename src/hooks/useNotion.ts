@@ -28,10 +28,12 @@ import type { PostCardData, PostDetailResponse } from '../types/notion';
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export interface UsePostsParams {
-  /** Notion 카테고리 Select 값 (예: '공지사항', '학생회 행사') */
-  category?: string;
+  /** 단일 카테고리 Select 값 */
+  category?:   string;
+  /** 복수 카테고리 OR 검색 (예: ['학생회 행사', '스포츠라이트']) */
+  categories?: string[];
   /** 가져올 최대 게시글 수 (기본값: DEFAULT_PER_PAGE) */
-  perPage?:  number;
+  perPage?:    number;
 }
 
 export interface UsePostsReturn {
@@ -40,10 +42,13 @@ export interface UsePostsReturn {
   error:     string | null;
 }
 
-export function usePosts({ category, perPage }: UsePostsParams): UsePostsReturn {
+export function usePosts({ category, categories, perPage }: UsePostsParams): UsePostsReturn {
   const [data,      setData]    = useState<PostCardData[]>([]);
   const [isLoading, setLoading] = useState(true);
   const [error,     setError]   = useState<string | null>(null);
+
+  // categories 배열을 안정적인 문자열 키로 변환 (useEffect 의존성)
+  const categoriesKey = categories?.join(',') ?? '';
 
   useEffect(() => {
     setData([]);
@@ -54,6 +59,7 @@ export function usePosts({ category, perPage }: UsePostsParams): UsePostsReturn 
 
     fetchPosts({
       category,
+      categories,
       limit:  perPage ?? DEFAULT_PER_PAGE,
       signal: controller.signal,
     })
@@ -66,7 +72,8 @@ export function usePosts({ category, perPage }: UsePostsParams): UsePostsReturn 
       .finally(() => setLoading(false));
 
     return () => controller.abort();
-  }, [category, perPage]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category, categoriesKey, perPage]);
 
   return { data, isLoading, error };
 }
@@ -126,9 +133,15 @@ export function useHomeNotices(): UsePostsReturn {
   return usePosts({ perPage: HOME_NOTICES_COUNT });
 }
 
-/** 홈 진행 행사 섹션 (학생회 행사 최신 N건) */
+/**
+ * 홈 진행 행사 섹션 — 모든 이벤트 카테고리 통합 최신 N건
+ * (학생회 행사 + 스포츠라이트 + 체육대회/이현제)
+ */
 export function useHomeEvents(): UsePostsReturn {
-  return usePosts({ category: CATEGORIES.events, perPage: HOME_EVENTS_COUNT });
+  return usePosts({
+    categories: [CATEGORIES.events, CATEGORIES.gallery, CATEGORIES.sportsDay],
+    perPage:    HOME_EVENTS_COUNT,
+  });
 }
 
 /** 홈 갤러리 섹션 (스포츠라이트 최신 N건) */

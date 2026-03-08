@@ -211,8 +211,15 @@ const NotionBlockView = ({ block }: { block: NotionBlock }) => {
 };
 
 /** Notion 블록 배열 → 본문 렌더링 */
-const NotionBlockRenderer = ({ blocks }: { blocks: NotionBlock[] }) => {
+const NotionBlockRenderer = ({
+  blocks,
+  hideEmptyMessage = false,
+}: {
+  blocks: NotionBlock[];
+  hideEmptyMessage?: boolean;
+}) => {
   if (blocks.length === 0) {
+    if (hideEmptyMessage) return null;
     return <p className="text-slate-400 text-sm py-4">내용이 없습니다.</p>;
   }
   return (
@@ -468,10 +475,13 @@ export const NoticeDetailPage = ({ postId, onBack }: NoticeDetailPageProps) => {
           </div>
         )}
 
-        {/* 본문 (Notion 블록 렌더링) */}
+        {/* 본문 (Notion 블록 렌더링) — content 속성이 있으면 빈 메시지 숨김 */}
         <article className="prose prose-slate max-w-none prose-headings:font-bold prose-a:text-blue-600 prose-img:rounded-lg">
-          <NotionBlockRenderer blocks={blocks} />
+          <NotionBlockRenderer blocks={blocks} hideEmptyMessage={!!post.content} />
         </article>
+
+        {/* content 도 없고 blocks 도 없을 때 최종 안내 */}
+        {!post.content && blocks.length === 0 && null}
 
         {/* 목록으로 돌아가기 */}
         <div className="pt-6 border-t border-slate-200">

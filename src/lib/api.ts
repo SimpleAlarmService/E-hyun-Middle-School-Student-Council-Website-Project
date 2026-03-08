@@ -14,18 +14,22 @@ import type { PostListResponse, PostDetailResponse } from '../types/notion';
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export interface FetchPostsParams {
-  category?: string;
-  limit?:    number;
-  cursor?:   string;
-  signal?:   AbortSignal;
+  category?:   string;
+  categories?: string[];   // 다중 카테고리 OR 검색
+  limit?:      number;
+  cursor?:     string;
+  signal?:     AbortSignal;
 }
 
 /** 게시글 목록 조회 */
 export async function fetchPosts(params: FetchPostsParams): Promise<PostListResponse> {
   const url = new URL(`${WORKER_BASE_URL}/posts`);
-  if (params.category) url.searchParams.set('category', params.category);
-  if (params.limit)    url.searchParams.set('limit',    String(params.limit));
-  if (params.cursor)   url.searchParams.set('cursor',   params.cursor);
+  if (params.categories?.length)
+    url.searchParams.set('categories', params.categories.join(','));
+  else if (params.category)
+    url.searchParams.set('category', params.category);
+  if (params.limit)  url.searchParams.set('limit',  String(params.limit));
+  if (params.cursor) url.searchParams.set('cursor',  params.cursor);
 
   const res = await fetch(url.toString(), { signal: params.signal });
   if (!res.ok) throw new Error(`Worker ${res.status}`);

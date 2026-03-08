@@ -65,6 +65,16 @@ function getFirstFileUrl(files: any[]): string {
   return '';
 }
 
+/** Notion 페이지 커버(내장) URL 추출 */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getPageCoverUrl(page: any): string {
+  const cover = page.cover;
+  if (!cover) return '';
+  if (cover.type === 'external') return cover.external?.url ?? '';
+  if (cover.type === 'file')     return cover.file?.url ?? '';
+  return '';
+}
+
 /** Notion 페이지 → PostCardData */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapPage(page: any): Record<string, unknown> {
@@ -80,7 +90,9 @@ function mapPage(page: any): Record<string, unknown> {
                         .map((r: { plain_text: string }) => r.plain_text)
                         .join('');
   const eventStatus = p['진행 여부']?.select?.name ?? '';
-  const imageUrl    = getFirstFileUrl(p['대표이미지']?.files ?? []);
+
+  // 대표이미지 속성 → 없으면 Notion 페이지 내장 커버 이미지 사용
+  const imageUrl = getFirstFileUrl(p['대표이미지']?.files ?? []) || getPageCoverUrl(page);
 
   return {
     id:          page.id,
@@ -160,9 +172,12 @@ async function resolveDbId(env: Env): Promise<string> {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 async function handleList(env: Env, url: URL): Promise<Response> {
-  const category = url.searchParams.get('category') ?? '';
-  const limit    = Math.min(Number(url.searchParams.get('limit') ?? 10), 100);
-  const cursor   = url.searchParams.get('cursor') ?? undefined;
+  const category   = url.searchParams.get('category') ?? '';
+  // 다중 카테고리: categories=A,B,C (쉼표 구분)
+  const categories = (url.searchParams.get('categories') ?? '')
+    .split(',').map((s) => s.trim()).filter(Boolean);
+  const limit      = Math.min(Number(url.searchParams.get('limit') ?? 10), 100);
+  const cursor     = url.searchParams.get('cursor') ?? undefined;
 
   const dbId = await resolveDbId(env);
 
@@ -170,7 +185,18 @@ async function handleList(env: Env, url: URL): Promise<Response> {
   const filters: unknown[] = [
     { property: '공개', checkbox: { equals: true } },
   ];
-  if (category) {
+
+  if (categories.length > 1) {
+    // 복수 카테고리 → OR 필터
+    filters.push({
+      or: categories.map((cat) => ({
+        property: '카테고리',
+        select:   { equals: cat },
+      })),
+    });
+  } else if (categories.length === 1) {
+    filters.push({ property: '카테고리', select: { equals: categories[0] } });
+  } else if (category) {
     filters.push({ property: '카테고리', select: { equals: category } });
   }
 
