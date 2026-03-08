@@ -4,6 +4,7 @@
  * NEIS schoolInfo API 데이터를 받아 주소·연락처·설립정보 등을 표시
  */
 
+import React from 'react';
 import { MapPin, Phone, Globe, Calendar, Building2, GraduationCap } from 'lucide-react';
 import { useSchoolInfo } from '../hooks/useSchoolInfo';
 

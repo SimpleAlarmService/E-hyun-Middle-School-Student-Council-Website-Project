@@ -37,7 +37,7 @@ import {
   ArchivePage,
   SitemapPage,
 } from './components/Pages';
-import { useHomeEvents, useHomeGallery } from './hooks/useWordPress';
+import { useHomeEvents, useHomeGallery } from './hooks/useNotion';
 import { deriveEventStatus } from './lib/api';
 import { ArrowRight, MessageSquare, ThumbsUp, Users, Calendar, Image as ImageIcon, AlertCircle } from 'lucide-react';
 
@@ -74,7 +74,7 @@ const HomeSectionEmpty = ({ message }: { message: string }) => (
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 interface HomePageProps {
-  navigate: (page: string, postId?: number) => void;
+  navigate: (page: string, postId?: string) => void;
 }
 
 const HomePage = ({ navigate }: HomePageProps) => {
@@ -83,7 +83,6 @@ const HomePage = ({ navigate }: HomePageProps) => {
     data:      homeEvents,
     isLoading: eventsLoading,
     error:     eventsError,
-    rawPosts:  rawEventPosts,
   } = useHomeEvents();
 
   // 홈 갤러리 섹션: 'gallery' 카테고리 최신 4건
@@ -141,10 +140,8 @@ const HomePage = ({ navigate }: HomePageProps) => {
             <HomeSectionEmpty message={eventsError ?? '현재 진행 중인 행사가 없습니다.'} />
           ) : (
             /* 실제 데이터: API에서 받은 게시글을 EventCard로 표시 */
-            homeEvents.map((event, index) => {
-              // rawPosts에서 ISO date를 가져와 상태 추론
-              const rawDate = rawEventPosts[index]?.date ?? '';
-              const status  = deriveEventStatus(rawDate);
+            homeEvents.map((event) => {
+              const status = deriveEventStatus(event.rawDate);
               return (
                 // Fragment로 key를 분리 → React 19 JSX 타입 호환
                 <Fragment key={event.id}>
@@ -310,14 +307,14 @@ const HomePage = ({ navigate }: HomePageProps) => {
 
 export default function App() {
   const [currentPage, setCurrentPage]       = useState('home');
-  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
 
   /**
    * 내비게이션 함수
    * - page:   이동할 페이지 키 (예: 'home', 'notices', 'notice-detail')
    * - postId: 게시글 상세 조회 시 ID (선택)
    */
-  const navigate = useCallback((page: string, postId?: number) => {
+  const navigate = useCallback((page: string, postId?: string) => {
     setCurrentPage(page);
     setSelectedPostId(postId ?? null);
   }, []);

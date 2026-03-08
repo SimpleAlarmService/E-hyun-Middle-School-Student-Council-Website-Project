@@ -2,35 +2,23 @@
  * EHSC Link — 페이지 컴포넌트
  * ──────────────────────────────────────────────────────────────
  *
- * 변경 내역 (WordPress API 연동 리팩터링):
- *  - [제거] NoticesPage: 하드코딩된 공지 5건 테이블 데이터
- *  - [제거] EventsPage:  하드코딩된 행사 6건 카드 데이터
- *  - [제거] ClubsPage:   하드코딩된 동아리 6건 카드 데이터
- *  - [제거] ArchivePage: 하드코딩된 문서 4건 + picsum 갤러리 4장
- *  - [추가] 모든 데이터 목록 페이지 → usePosts() 훅으로 API 연동
- *  - [추가] NoticeDetailPage: 공지사항 단일 게시글 상세 페이지 (신규)
- *  - [추가] 각 페이지 로딩 스켈레톤 / 에러 / 빈 상태 UI
- *  - [유지] IntroPage:      조직 구성은 정적 콘텐츠 (편집적 결정)
- *  - [유지] ParticipationPage: 링크/문의 폼 구조 유지
- *  - [유지] SitemapPage:    구조 유지
- *  - [유지] PageHeader 컴포넌트, 전체 레이아웃·디자인 톤 동일
- *
- * 설계 원칙:
- *  - 관리자 인증 정보 없음 (읽기 전용)
- *  - 데이터 없을 때 레이아웃이 무너지지 않도록 빈 상태 UI 처리
- *  - WordPress에서 글만 쓰면 자동 반영되는 구조
+ * 변경 내역 (Notion CMS 마이그레이션):
+ *  - [교체] WordPress 훅(usePosts/usePost) → useNotion 훅
+ *  - [교체] CATEGORY_SLUGS → CATEGORIES (한글 Select 값)
+ *  - [교체] WordPress HTML 렌더링 → NotionBlockRenderer
+ *  - [제거] stripHtml, extractCategories (Notion은 이미 플레인 텍스트 반환)
+ *  - [변경] postId 타입: number → string (Notion UUID)
+ *  - [유지] IntroPage, ParticipationPage, SuggestionPage, EventProposalPage — 정적 콘텐츠 그대로
  */
 
-import { Fragment, useState } from 'react';
+import React, { Fragment, useState } from 'react';
 import {
   Users,
   Target,
-  BookOpen,
   MessageSquare,
   Lightbulb,
   Calendar,
   FileText,
-  Image as ImageIcon,
   ChevronRight,
   ChevronLeft,
   Download,
@@ -39,16 +27,15 @@ import {
   ArrowLeft,
   Tag,
 } from 'lucide-react';
-import { CATEGORY_SLUGS } from '../lib/config';
-import { usePosts, usePost } from '../hooks/useWordPress';
-import { formatKoreanDate, stripHtml, deriveEventStatus } from '../lib/api';
-import type { PostCardData, WPPost } from '../types/wordpress';
+import { CATEGORIES } from '../lib/config';
+import { usePosts, usePost } from '../hooks/useNotion';
+import { deriveEventStatus } from '../lib/api';
+import type { PostCardData, NotionBlock, NotionRichText } from '../types/notion';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 공통 UI 컴포넌트 (페이지 내부용)
+// 공통 UI (로딩 / 에러 / 빈 상태)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-/** 페이지 공통 헤더 */
 const PageHeader = ({ title, subtitle }: { title: string; subtitle: string }) => (
   <div className="bg-white border-b border-slate-200 py-12 mb-8">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -58,7 +45,6 @@ const PageHeader = ({ title, subtitle }: { title: string; subtitle: string }) =>
   </div>
 );
 
-/** 전체 페이지 로딩 스켈레톤 */
 const PageSkeleton = ({ rows = 5 }: { rows?: number }) => (
   <div className="animate-pulse space-y-4" aria-label="로딩 중">
     {[...Array(rows)].map((_, i) => (
@@ -67,7 +53,6 @@ const PageSkeleton = ({ rows = 5 }: { rows?: number }) => (
   </div>
 );
 
-/** 카드 그리드 로딩 스켈레톤 */
 const CardSkeleton = ({ count = 6 }: { count?: number }) => (
   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-pulse" aria-label="로딩 중">
     {[...Array(count)].map((_, i) => (
@@ -82,7 +67,6 @@ const CardSkeleton = ({ count = 6 }: { count?: number }) => (
   </div>
 );
 
-/** 에러 상태 (전체 영역) */
 const ErrorState = ({ message = '데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.' }: { message?: string }) => (
   <div className="flex flex-col items-center justify-center py-20 gap-4 text-slate-400">
     <AlertCircle size={36} className="text-red-400" />
@@ -90,7 +74,6 @@ const ErrorState = ({ message = '데이터를 불러오지 못했습니다. 잠�
   </div>
 );
 
-/** 빈 상태 (전체 영역) */
 const EmptyState = ({ message = '등록된 게시글이 없습니다.' }: { message?: string }) => (
   <div className="flex flex-col items-center justify-center py-20 gap-4 text-slate-400">
     <InboxIcon size={36} />
@@ -99,11 +82,152 @@ const EmptyState = ({ message = '등록된 게시글이 없습니다.' }: { mess
 );
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// IntroPage — 학생자치회 소개
+// Notion Block 렌더러
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-//
-// 조직 구성 정보는 편집적 판단으로 정적 유지합니다.
-// (부서 이름·역할은 학기 중 변경이 거의 없고, 운영자가 직접 관리)
+
+/** Notion Rich Text 배열 → React 노드 */
+function renderRichText(texts: NotionRichText[]): React.ReactNode {
+  return texts.map((t, i) => {
+    let node: React.ReactNode = t.plain_text;
+    if (t.annotations.bold)          node = <strong key={`b${i}`}>{node}</strong>;
+    if (t.annotations.italic)        node = <em key={`i${i}`}>{node}</em>;
+    if (t.annotations.strikethrough) node = <del key={`s${i}`}>{node}</del>;
+    if (t.annotations.underline)     node = <u key={`u${i}`}>{node}</u>;
+    if (t.annotations.code)          node = (
+      <code key={`c${i}`} className="bg-slate-100 text-slate-800 px-1 py-0.5 rounded text-sm font-mono">
+        {node}
+      </code>
+    );
+    if (t.text.link) node = (
+      <a key={`l${i}`} href={t.text.link.url} target="_blank" rel="noopener noreferrer"
+         className="text-blue-600 underline hover:text-blue-800">
+        {node}
+      </a>
+    );
+    return <span key={i}>{node}</span>;
+  });
+}
+
+/** 개별 Notion 블록 → JSX */
+const NotionBlockView = ({ block }: { block: NotionBlock }) => {
+  switch (block.type) {
+
+    case 'paragraph':
+      return (
+        <p className="mb-4 leading-relaxed text-slate-700">
+          {renderRichText(block.paragraph?.rich_text ?? [])}
+        </p>
+      );
+
+    case 'heading_1':
+      return (
+        <h1 className="text-2xl font-bold mt-8 mb-3 text-slate-900">
+          {renderRichText(block.heading_1?.rich_text ?? [])}
+        </h1>
+      );
+
+    case 'heading_2':
+      return (
+        <h2 className="text-xl font-bold mt-6 mb-2 text-slate-800">
+          {renderRichText(block.heading_2?.rich_text ?? [])}
+        </h2>
+      );
+
+    case 'heading_3':
+      return (
+        <h3 className="text-lg font-semibold mt-4 mb-2 text-slate-800">
+          {renderRichText(block.heading_3?.rich_text ?? [])}
+        </h3>
+      );
+
+    case 'bulleted_list_item':
+      return (
+        <li className="ml-5 mb-1.5 list-disc text-slate-700">
+          {renderRichText(block.bulleted_list_item?.rich_text ?? [])}
+        </li>
+      );
+
+    case 'numbered_list_item':
+      return (
+        <li className="ml-5 mb-1.5 list-decimal text-slate-700">
+          {renderRichText(block.numbered_list_item?.rich_text ?? [])}
+        </li>
+      );
+
+    case 'quote':
+      return (
+        <blockquote className="border-l-4 border-slate-300 pl-4 my-4 italic text-slate-600">
+          {renderRichText(block.quote?.rich_text ?? [])}
+        </blockquote>
+      );
+
+    case 'callout':
+      return (
+        <div className="flex gap-3 bg-blue-50 border border-blue-100 rounded-lg p-4 my-4">
+          {block.callout?.icon?.emoji && (
+            <span className="text-xl shrink-0">{block.callout.icon.emoji}</span>
+          )}
+          <div className="text-slate-700">
+            {renderRichText(block.callout?.rich_text ?? [])}
+          </div>
+        </div>
+      );
+
+    case 'code':
+      return (
+        <pre className="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto my-4 text-sm font-mono leading-relaxed">
+          <code>{(block.code?.rich_text ?? []).map(t => t.plain_text).join('')}</code>
+        </pre>
+      );
+
+    case 'divider':
+      return <hr className="border-slate-200 my-6" />;
+
+    case 'image': {
+      const src =
+        block.image?.type === 'external' ? block.image.external?.url
+        : block.image?.type === 'file'   ? block.image.file?.url
+        : undefined;
+      if (!src) return null;
+      const caption = (block.image?.caption ?? []).map(t => t.plain_text).join('');
+      return (
+        <figure className="my-6">
+          <img
+            src={src}
+            alt={caption || '첨부 이미지'}
+            className="w-full rounded-lg border border-slate-200"
+            loading="lazy"
+          />
+          {caption && (
+            <figcaption className="text-xs text-slate-400 text-center mt-2">{caption}</figcaption>
+          )}
+        </figure>
+      );
+    }
+
+    default:
+      return null;
+  }
+};
+
+/** Notion 블록 배열 → 본문 렌더링 */
+const NotionBlockRenderer = ({ blocks }: { blocks: NotionBlock[] }) => {
+  if (blocks.length === 0) {
+    return <p className="text-slate-400 text-sm py-4">내용이 없습니다.</p>;
+  }
+  return (
+    <div className="text-slate-700 leading-relaxed">
+      {blocks.map((block) => (
+        <Fragment key={block.id}>
+          <NotionBlockView block={block} />
+        </Fragment>
+      ))}
+    </div>
+  );
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// IntroPage — 학생자치회 소개 (정적)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export const IntroPage = () => (
@@ -127,7 +251,6 @@ export const IntroPage = () => (
             ))}
           </ul>
         </div>
-        {/* 이미지 placeholder (실제 학교 사진으로 교체 권장) */}
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl aspect-video overflow-hidden flex items-center justify-center">
           <Users size={64} className="text-blue-300" />
         </div>
@@ -138,7 +261,6 @@ export const IntroPage = () => (
           <Users className="text-blue-600" /> 조직 구성
         </h2>
 
-        {/* 부서 */}
         <h3 className="text-lg font-semibold text-slate-700 mb-4">부서</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           {[
@@ -157,7 +279,6 @@ export const IntroPage = () => (
           ))}
         </div>
 
-        {/* 학년 대표 */}
         <h3 className="text-lg font-semibold text-slate-700 mb-4">학년 대표 · 서기</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
@@ -180,20 +301,15 @@ export const IntroPage = () => (
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // NoticesPage — 공지사항 목록
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-//
-// [변경] 하드코딩된 테이블 데이터 → usePosts({ categorySlug: 'notices' }) 연동
-// [추가] onSelectPost 콜백: 행 클릭 시 상세 페이지 진입
-// [구조] 페이지네이션 확장 가능한 구조로 설계 (현재 10건 기본)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 interface NoticesPageProps {
-  onSelectPost?: (postId: number) => void;
+  onSelectPost?: (postId: string) => void;
 }
 
 export const NoticesPage = ({ onSelectPost }: NoticesPageProps) => {
   const { data: posts, isLoading, error } = usePosts({
-    categorySlug: CATEGORY_SLUGS.notices,
-    perPage: 20,
+    category: CATEGORIES.notices,
+    perPage:  20,
   });
 
   return (
@@ -230,9 +346,7 @@ export const NoticesPage = ({ onSelectPost }: NoticesPageProps) => {
                     onKeyDown={(e) => e.key === 'Enter' && onSelectPost?.(post.id)}
                   >
                     <td className="px-6 py-4 text-sm text-slate-400">{posts.length - index}</td>
-                    <td className="px-6 py-4 text-sm text-slate-800 font-medium">
-                      {post.title}
-                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-800 font-medium">{post.title}</td>
                     <td className="px-6 py-4 text-sm text-slate-500 hidden sm:table-cell">
                       {post.categories[0] ? (
                         <span className="px-2 py-0.5 text-[10px] rounded-full bg-blue-50 text-blue-600 border border-blue-100 font-medium">
@@ -246,8 +360,6 @@ export const NoticesPage = ({ onSelectPost }: NoticesPageProps) => {
                 ))}
               </tbody>
             </table>
-            {/* 추후 페이지네이션 컴포넌트 위치 */}
-            {/* TODO: 페이지네이션 구현 시 여기에 <Pagination /> 추가 */}
           </div>
         )}
       </div>
@@ -256,21 +368,18 @@ export const NoticesPage = ({ onSelectPost }: NoticesPageProps) => {
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// NoticeDetailPage — 공지사항 상세 (신규)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-//
-// postId를 받아 단일 게시글을 조회합니다.
-// 이전글/다음글 구조는 향후 확장을 위한 UI 자리만 남겨둡니다.
+// NoticeDetailPage — 게시글 상세
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 interface NoticeDetailPageProps {
-  postId:   number;
-  onBack:   () => void;
+  postId: string;   // Notion UUID
+  onBack: () => void;
 }
 
 export const NoticeDetailPage = ({ postId, onBack }: NoticeDetailPageProps) => {
-  const { data: post, isLoading, error } = usePost({ id: postId });
+  const { detail, isLoading, error } = usePost(postId);
 
+  // ── 로딩 ──
   if (isLoading) {
     return (
       <div className="pb-12">
@@ -290,7 +399,8 @@ export const NoticeDetailPage = ({ postId, onBack }: NoticeDetailPageProps) => {
     );
   }
 
-  if (error || !post) {
+  // ── 에러 / 없음 ──
+  if (error || !detail) {
     return (
       <div className="pb-12">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
@@ -303,7 +413,8 @@ export const NoticeDetailPage = ({ postId, onBack }: NoticeDetailPageProps) => {
     );
   }
 
-  const categories = post._embedded?.['wp:term']?.[0] ?? [];
+  const post   = detail.post;
+  const blocks = detail.blocks;
 
   return (
     <div className="pb-12">
@@ -315,58 +426,45 @@ export const NoticeDetailPage = ({ postId, onBack }: NoticeDetailPageProps) => {
           </button>
 
           {/* 카테고리 배지 */}
-          {categories.length > 0 && (
+          {post.categories.length > 0 && (
             <div className="flex gap-2 mb-3">
-              {categories.map((cat) => (
-                <span key={cat.id} className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-full bg-blue-50 text-blue-600 border border-blue-100 font-medium">
-                  <Tag size={10} /> {cat.name}
+              {post.categories.map((cat) => (
+                <span key={cat} className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-full bg-blue-50 text-blue-600 border border-blue-100 font-medium">
+                  <Tag size={10} /> {cat}
                 </span>
               ))}
             </div>
           )}
 
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-4 leading-tight">
-            {stripHtml(post.title.rendered)}
+            {post.title}
           </h1>
 
           <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
-            <span>작성자: {post._embedded?.author?.[0]?.name ?? '학생자치회'}</span>
+            <span>작성자: {post.author}</span>
             <span>·</span>
-            <span>게시일: {formatKoreanDate(post.date)}</span>
+            <span>게시일: {post.date}</span>
           </div>
         </div>
       </div>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         {/* 대표 이미지 */}
-        {post.featured_media > 0 && post._embedded?.['wp:featuredmedia']?.[0] && (
+        {post.imageUrl && (
           <div className="rounded-xl overflow-hidden border border-slate-200">
             <img
-              src={post._embedded['wp:featuredmedia'][0].source_url}
-              alt={post._embedded['wp:featuredmedia'][0].alt_text || stripHtml(post.title.rendered)}
+              src={post.imageUrl}
+              alt={post.imageAlt || post.title}
               className="w-full object-cover"
               loading="lazy"
             />
           </div>
         )}
 
-        {/* 본문 (WordPress rendered HTML 안전 렌더링) */}
-        <article
-          className="prose prose-slate max-w-none prose-headings:font-bold prose-a:text-blue-600 prose-img:rounded-lg"
-          /* WordPress가 서버사이드에서 생성한 안전한 HTML을 렌더링합니다.
-             추후 DOMPurify 등의 sanitizer 추가를 고려하세요. */
-          dangerouslySetInnerHTML={{ __html: post.content.rendered }}
-        />
-
-        {/* 첨부파일 자리 (WordPress media API 연동 시 구현 가능) */}
-        {/* TODO: 첨부파일이 있는 경우 여기에 표시
-            WordPress REST API에서 직접 첨부파일 목록을 가져오려면:
-            GET /wp-json/wp/v2/media?parent={postId} */}
-
-        {/* 이전글/다음글 자리 (향후 확장용 구조) */}
-        {/* TODO: 이전글/다음글 구현 시 여기에 추가
-            getPosts({ before: post.date, per_page: 1 })
-            getPosts({ after: post.date, order: 'asc', per_page: 1 }) */}
+        {/* 본문 (Notion 블록 렌더링) */}
+        <article className="prose prose-slate max-w-none prose-headings:font-bold prose-a:text-blue-600 prose-img:rounded-lg">
+          <NotionBlockRenderer blocks={blocks} />
+        </article>
 
         {/* 목록으로 돌아가기 */}
         <div className="pt-6 border-t border-slate-200">
@@ -383,10 +481,7 @@ export const NoticeDetailPage = ({ postId, onBack }: NoticeDetailPageProps) => {
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ParticipationPage — 학생참여
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-//
-// 카드 클릭 → 별도 form 페이지(suggestion / event-proposal)로 이동
+// ParticipationPage — 학생참여 (정적)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export const ParticipationPage = ({ onNavigate }: { onNavigate?: (page: string) => void }) => (
@@ -394,7 +489,6 @@ export const ParticipationPage = ({ onNavigate }: { onNavigate?: (page: string) 
     <PageHeader title="학생참여" subtitle="여러분의 목소리가 학교를 변화시킵니다." />
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 gap-8">
 
-      {/* 학생 건의함 */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 flex flex-col gap-6">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center shrink-0">
@@ -421,7 +515,6 @@ export const ParticipationPage = ({ onNavigate }: { onNavigate?: (page: string) 
         </button>
       </div>
 
-      {/* 행사 제안 */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 flex flex-col gap-6">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center shrink-0">
@@ -453,7 +546,7 @@ export const ParticipationPage = ({ onNavigate }: { onNavigate?: (page: string) 
 );
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// SuggestionPage — 학생 건의함 (Google Form 임베드)
+// SuggestionPage — 학생 건의함 (Google Form 임베드, 정적)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export const SuggestionPage = ({ onBack }: { onBack?: () => void }) => (
@@ -497,7 +590,7 @@ export const SuggestionPage = ({ onBack }: { onBack?: () => void }) => (
 );
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// EventProposalPage — 행사 제안 (Google Form 임베드)
+// EventProposalPage — 행사 제안 (Google Form 임베드, 정적)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export const EventProposalPage = ({ onBack }: { onBack?: () => void }) => (
@@ -543,24 +636,19 @@ export const EventProposalPage = ({ onBack }: { onBack?: () => void }) => (
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // EventsPage — 학생회 행사
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-//
-// [변경] 하드코딩된 행사 카드 6건 → usePosts({ categorySlug }) 연동
-// [추가] 카테고리 탭: 학생회 행사 / 체육대회·이현제
-// [추가] 카드 로딩 스켈레톤 / 에러 / 빈 상태
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const EVENTS_TABS = [
-  { label: '스포츠라이트',    slug: CATEGORY_SLUGS.gallery   },
-  { label: '행사 안내',      slug: CATEGORY_SLUGS.events    },
-  { label: '체육대회/이현제', slug: CATEGORY_SLUGS.sportsDay },
+  { label: '스포츠라이트',    category: CATEGORIES.gallery   },
+  { label: '행사 안내',      category: CATEGORIES.events    },
+  { label: '체육대회/이현제', category: CATEGORIES.sportsDay },
 ] as const;
 
-export const EventsPage = ({ onSelectPost }: { onSelectPost?: (id: number) => void }) => {
+export const EventsPage = ({ onSelectPost }: { onSelectPost?: (id: string) => void }) => {
   const [activeTab, setActiveTab] = useState(0);
 
   const { data: events, isLoading, error } = usePosts({
-    categorySlug: EVENTS_TABS[activeTab].slug,
-    perPage: 12,
+    category: EVENTS_TABS[activeTab].category,
+    perPage:  12,
   });
 
   return (
@@ -568,7 +656,6 @@ export const EventsPage = ({ onSelectPost }: { onSelectPost?: (id: number) => vo
       <PageHeader title="학생회 행사" subtitle="이현중학교 학생들을 위한 즐거운 행사들입니다." />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* 카테고리 탭 */}
         <div className="flex gap-2 mb-8 border-b border-slate-200">
           {EVENTS_TABS.map((tab, i) => (
             <button
@@ -606,9 +693,8 @@ export const EventsPage = ({ onSelectPost }: { onSelectPost?: (id: number) => vo
 };
 
 /** 행사 카드 (EventsPage 전용) */
-const EventPostCard = ({ post, onSelectPost }: { post: PostCardData; onSelectPost?: (id: number) => void }) => {
-  const status = deriveEventStatus(post.rawDate);
-  // status 표시 레이블·색상
+const EventPostCard = ({ post, onSelectPost }: { post: PostCardData; onSelectPost?: (id: string) => void }) => {
+  const status      = deriveEventStatus(post.rawDate);
   const statusLabel = status === 'upcoming' ? '예정' : status === 'ongoing' ? '진행중' : '종료';
   const statusClass = status === 'upcoming'
     ? 'bg-blue-600 text-white'
@@ -657,24 +743,18 @@ const EventPostCard = ({ post, onSelectPost }: { post: PostCardData; onSelectPos
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ArchivePage — 자료실
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-//
-// [변경] 하드코딩된 문서 4건 → usePosts({ categorySlug }) 연동
-// [추가] 문서 탭: 자료실 / 기타자료실 / 회의록
-// [변경] picsum 갤러리 → usePosts({ categorySlug: 'gallery' }) 연동
-// [추가] 로딩 스켈레톤 / 에러 / 빈 상태
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const DOCS_TABS = [
-  { label: '회의록',    slug: CATEGORY_SLUGS.minutes      },
-  { label: '기타자료실', slug: CATEGORY_SLUGS.resourcesEtc },
+  { label: '회의록',    category: CATEGORIES.minutes      },
+  { label: '기타자료실', category: CATEGORIES.resourcesEtc },
 ] as const;
 
 export const ArchivePage = () => {
   const [activeDocsTab, setActiveDocsTab] = useState(0);
 
   const { data: docs, isLoading: docsLoading, error: docsError } = usePosts({
-    categorySlug: DOCS_TABS[activeDocsTab].slug,
-    perPage: 20,
+    category: DOCS_TABS[activeDocsTab].category,
+    perPage:  20,
   });
 
   return (
@@ -682,7 +762,6 @@ export const ArchivePage = () => {
       <PageHeader title="자료실" subtitle="학생자치회의 회의록과 문서 자료입니다." />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* 탭 */}
         <div className="flex gap-2 mb-8 border-b border-slate-200">
           {DOCS_TABS.map((tab, i) => (
             <button
@@ -742,7 +821,7 @@ export const ArchivePage = () => {
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// SitemapPage — 사이트맵
+// SitemapPage — 사이트맵 (정적)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export const SitemapPage = ({ onNavigate }: { onNavigate: (page: string) => void }) => {

@@ -36,8 +36,8 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useHomeNotices } from '../hooks/useWordPress';
-import type { PostCardData } from '../types/wordpress';
+import { useHomeNotices } from '../hooks/useNotion';
+import type { PostCardData } from '../types/notion';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 내부 공통 UI (로딩 / 에러 / 빈 상태)
@@ -311,7 +311,7 @@ export const Notices = ({
   onSelectPost,
 }: {
   onNavigate?:   (page: string) => void;
-  onSelectPost?: (postId: number) => void;
+  onSelectPost?: (postId: string) => void;
 }) => {
   const [activeTab, setActiveTab] = useState('전체');
   const { data: posts, isLoading, error } = useHomeNotices();
@@ -456,7 +456,7 @@ export const QuickLinks = ({ onNavigate }: { onNavigate: (page: string) => void 
 export type EventStatus = 'upcoming' | 'ongoing' | 'ended';
 
 export type EventCardProps = {
-  id:          number;
+  id:          string;
   title:       string;
   date:        string;
   status:      EventStatus;

@@ -9,7 +9,7 @@
  * - 오류/데이터 없음 상태도 레이아웃 깨짐 없이 처리
  */
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
   UtensilsCrossed,
   AlertCircle,
