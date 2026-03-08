@@ -16,7 +16,7 @@ import type { PostListResponse, PostDetailResponse } from '../types/notion';
 /**
  * Notion 내부 S3 업로드 이미지 URL을 Worker 이미지 프록시 URL로 변환합니다.
  * Notion S3 URL은 1시간 후 만료되지만, Worker 프록시를 거치면
- * Cloudflare CDN에 30일간 캐시되어 안정적으로 제공됩니다.
+ * Cloudflare CDN에 365일간 캐시되어 안정적으로 제공됩니다.
  * 외부 URL(Imgur, Google Drive 등)은 그대로 반환합니다.
  */
 export function notionImageUrl(rawUrl: string): string {

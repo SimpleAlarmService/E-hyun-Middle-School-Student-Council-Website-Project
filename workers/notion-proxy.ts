@@ -261,7 +261,7 @@ async function handleList(env: Env, url: URL): Promise<Response> {
  * GET /image?url=<encoded_notion_s3_url>
  *
  * Notion 내부 업로드 이미지는 서명된 S3 URL로 제공되며 약 1시간 후 만료됩니다.
- * 이 엔드포인트는 Cloudflare CDN을 통해 이미지를 30일간 캐시하여,
+ * 이 엔드포인트는 Cloudflare CDN을 통해 이미지를 365일간 캐시하여,
  * 원본 S3 URL이 만료된 후에도 이미지를 안정적으로 제공합니다.
  */
 async function handleImageProxy(url: URL): Promise<Response> {
@@ -275,9 +275,9 @@ async function handleImageProxy(url: URL): Promise<Response> {
 
   const notionUrl = decodeURIComponent(rawUrl);
 
-  // Cloudflare CDN에 30일 캐시 (S3 URL 만료 후에도 제공 가능)
+  // Cloudflare CDN에 365일 캐시 (S3 URL 만료 후에도 제공 가능)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const resp = await fetch(notionUrl, { cf: { cacheTtl: 86400 * 30, cacheEverything: true } } as any);
+  const resp = await fetch(notionUrl, { cf: { cacheTtl: 86400 * 365, cacheEverything: true } } as any);
 
   if (!resp.ok) {
     return new Response('Image not available', { status: resp.status, headers: CORS_HEADERS });
@@ -287,7 +287,7 @@ async function handleImageProxy(url: URL): Promise<Response> {
   return new Response(resp.body, {
     headers: {
       'Content-Type':               contentType,
-      'Cache-Control':              'public, max-age=2592000', // 30일
+      'Cache-Control':              'public, max-age=31536000', // 365일
       'Access-Control-Allow-Origin': '*',
     },
   });
