@@ -38,7 +38,7 @@ import {
   SitemapPage,
 } from './components/Pages';
 import { useHomeEvents, useHomeGallery } from './hooks/useNotion';
-import { deriveEventStatus } from './lib/api';
+import { deriveEventStatus, mapEventStatus } from './lib/api';
 import { ArrowRight, MessageSquare, ThumbsUp, Users, Calendar, Image as ImageIcon, AlertCircle } from 'lucide-react';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -141,7 +141,9 @@ const HomePage = ({ navigate }: HomePageProps) => {
           ) : (
             /* 실제 데이터: API에서 받은 게시글을 EventCard로 표시 */
             homeEvents.map((event) => {
-              const status = deriveEventStatus(event.rawDate);
+              const status = event.eventStatus
+                ? mapEventStatus(event.eventStatus)
+                : deriveEventStatus(event.rawDate);
               return (
                 // Fragment로 key를 분리 → React 19 JSX 타입 호환
                 <Fragment key={event.id}>

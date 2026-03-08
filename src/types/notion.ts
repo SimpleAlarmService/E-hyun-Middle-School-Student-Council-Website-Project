@@ -21,8 +21,12 @@ export interface PostCardData {
   date: string;
   /** ISO 날짜 (예: "2026-03-08") — 행사 상태 계산 등에 사용 */
   rawDate: string;
-  /** 요약 텍스트 */
+  /** 요약 텍스트 (DB 속성 「요약」) */
   excerpt: string;
+  /** 본문 텍스트 (DB 속성 「내용」) */
+  content: string;
+  /** 진행 여부 Select 값 (예: '예정', '진행중', '종료') — 공지사항 제외 */
+  eventStatus: string;
   /** 대표 이미지 URL */
   imageUrl: string;
   /** 대표 이미지 alt 텍스트 */

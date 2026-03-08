@@ -70,25 +70,31 @@ function getFirstFileUrl(files: any[]): string {
 function mapPage(page: any): Record<string, unknown> {
   const p = page.properties ?? {};
 
-  const title    = p['제목']?.title?.[0]?.plain_text ?? '';
-  const category = p['카테고리']?.select?.name ?? '';
-  const rawDate  = p['작성일']?.date?.start ?? '';
-  const excerpt  = (p['요약']?.rich_text ?? [])
-                     .map((r: { plain_text: string }) => r.plain_text)
-                     .join('');
-  const imageUrl = getFirstFileUrl(p['대표이미지']?.files ?? []);
+  const title       = p['제목']?.title?.[0]?.plain_text ?? '';
+  const category    = p['카테고리']?.select?.name ?? '';
+  const rawDate     = p['작성일']?.date?.start ?? '';
+  const excerpt     = (p['요약']?.rich_text ?? [])
+                        .map((r: { plain_text: string }) => r.plain_text)
+                        .join('');
+  const content     = (p['내용']?.rich_text ?? [])
+                        .map((r: { plain_text: string }) => r.plain_text)
+                        .join('');
+  const eventStatus = p['진행 여부']?.select?.name ?? '';
+  const imageUrl    = getFirstFileUrl(p['대표이미지']?.files ?? []);
 
   return {
-    id:         page.id,
+    id:          page.id,
     title,
-    date:       formatKoreanDate(rawDate),
+    date:        formatKoreanDate(rawDate),
     rawDate,
     excerpt,
+    content,
+    eventStatus,
     imageUrl,
-    imageAlt:   title,
-    categories: category ? [category] : [],
-    link:       page.url ?? '',
-    author:     '학생자치회',
+    imageAlt:    title,
+    categories:  category ? [category] : [],
+    link:        page.url ?? '',
+    author:      '학생자치회',
   };
 }
 

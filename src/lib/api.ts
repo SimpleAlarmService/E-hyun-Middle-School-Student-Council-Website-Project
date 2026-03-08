@@ -84,3 +84,16 @@ export function deriveEventStatus(rawDate: string): EventStatus {
   if (daysSince < 14)  return 'ongoing';
   return 'ended';
 }
+
+/**
+ * Notion 「진행 여부」 Select 값 → EventStatus 변환
+ *   '예정' / '진행 전' → upcoming
+ *   '진행중' / '진행 중' → ongoing
+ *   '종료' / '완료' 또는 기타 → ended
+ */
+export function mapEventStatus(notionStatus: string): EventStatus {
+  if (!notionStatus) return 'ended';
+  if (notionStatus.includes('예정') || notionStatus.includes('진행 전')) return 'upcoming';
+  if (notionStatus.includes('진행')) return 'ongoing';
+  return 'ended';
+}

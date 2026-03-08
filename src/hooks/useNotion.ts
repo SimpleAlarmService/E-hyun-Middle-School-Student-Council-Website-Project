@@ -118,9 +118,12 @@ export function usePost(id: string | null): UsePostReturn {
 // 홈 전용 훅 (고정 카테고리 + 고정 개수)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-/** 홈 공지사항 위젯 (공지사항 최신 N건) */
+/**
+ * 홈 공지사항 위젯 — 카테고리 무관 전체 최신글 N건
+ * (탭 필터링은 Notices 컴포넌트에서 클라이언트 사이드로 처리)
+ */
 export function useHomeNotices(): UsePostsReturn {
-  return usePosts({ category: CATEGORIES.notices, perPage: HOME_NOTICES_COUNT });
+  return usePosts({ perPage: HOME_NOTICES_COUNT });
 }
 
 /** 홈 진행 행사 섹션 (학생회 행사 최신 N건) */

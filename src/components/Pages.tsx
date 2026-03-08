@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { CATEGORIES } from '../lib/config';
 import { usePosts, usePost } from '../hooks/useNotion';
-import { deriveEventStatus } from '../lib/api';
+import { deriveEventStatus, mapEventStatus } from '../lib/api';
 import type { PostCardData, NotionBlock, NotionRichText } from '../types/notion';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -461,6 +461,13 @@ export const NoticeDetailPage = ({ postId, onBack }: NoticeDetailPageProps) => {
           </div>
         )}
 
+        {/* 내용 속성 (DB 「내용」 필드가 있으면 블록보다 먼저 표시) */}
+        {post.content && (
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
+            <p className="text-slate-700 leading-relaxed whitespace-pre-line">{post.content}</p>
+          </div>
+        )}
+
         {/* 본문 (Notion 블록 렌더링) */}
         <article className="prose prose-slate max-w-none prose-headings:font-bold prose-a:text-blue-600 prose-img:rounded-lg">
           <NotionBlockRenderer blocks={blocks} />
@@ -694,8 +701,11 @@ export const EventsPage = ({ onSelectPost }: { onSelectPost?: (id: string) => vo
 
 /** 행사 카드 (EventsPage 전용) */
 const EventPostCard = ({ post, onSelectPost }: { post: PostCardData; onSelectPost?: (id: string) => void }) => {
-  const status      = deriveEventStatus(post.rawDate);
-  const statusLabel = status === 'upcoming' ? '예정' : status === 'ongoing' ? '진행중' : '종료';
+  // 진행 여부 속성이 있으면 우선 사용, 없으면 작성일로 추론
+  const status      = post.eventStatus
+    ? mapEventStatus(post.eventStatus)
+    : deriveEventStatus(post.rawDate);
+  const statusLabel = post.eventStatus || (status === 'upcoming' ? '예정' : status === 'ongoing' ? '진행중' : '종료');
   const statusClass = status === 'upcoming'
     ? 'bg-blue-600 text-white'
     : status === 'ongoing'
