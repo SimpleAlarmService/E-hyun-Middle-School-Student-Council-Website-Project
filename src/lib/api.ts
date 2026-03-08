@@ -10,6 +10,30 @@ import { WORKER_BASE_URL } from './config';
 import type { PostListResponse, PostDetailResponse } from '../types/notion';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 이미지 URL 유틸
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/**
+ * Notion 내부 S3 업로드 이미지 URL을 Worker 이미지 프록시 URL로 변환합니다.
+ * Notion S3 URL은 1시간 후 만료되지만, Worker 프록시를 거치면
+ * Cloudflare CDN에 30일간 캐시되어 안정적으로 제공됩니다.
+ * 외부 URL(Imgur, Google Drive 등)은 그대로 반환합니다.
+ */
+export function notionImageUrl(rawUrl: string): string {
+  if (!rawUrl) return '';
+  // Notion 내부 업로드 이미지 S3 URL 패턴
+  if (
+    rawUrl.includes('prod-files-secure.s3') ||
+    rawUrl.includes('secure.notion-static.com') ||
+    rawUrl.includes('s3.us-west-2.amazonaws.com') ||
+    rawUrl.includes('s3-us-west-2.amazonaws.com')
+  ) {
+    return `${WORKER_BASE_URL}/image?url=${encodeURIComponent(rawUrl)}`;
+  }
+  return rawUrl;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // API 함수
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -33,14 +57,24 @@ export async function fetchPosts(params: FetchPostsParams): Promise<PostListResp
 
   const res = await fetch(url.toString(), { signal: params.signal });
   if (!res.ok) throw new Error(`Worker ${res.status}`);
-  return res.json() as Promise<PostListResponse>;
+  const json = await res.json() as PostListResponse;
+  // Notion S3 URL → Worker 이미지 프록시 URL 로 변환 (만료 방지)
+  return {
+    ...json,
+    results: json.results.map((post) => ({ ...post, imageUrl: notionImageUrl(post.imageUrl) })),
+  };
 }
 
 /** 단일 게시글 조회 (properties + Notion blocks) */
 export async function fetchPost(id: string, signal?: AbortSignal): Promise<PostDetailResponse> {
   const res = await fetch(`${WORKER_BASE_URL}/posts/${id}`, { signal });
   if (!res.ok) throw new Error(`Worker ${res.status}`);
-  return res.json() as Promise<PostDetailResponse>;
+  const json = await res.json() as PostDetailResponse;
+  // Notion S3 URL → Worker 이미지 프록시 URL 로 변환 (만료 방지)
+  return {
+    ...json,
+    post: { ...json.post, imageUrl: notionImageUrl(json.post.imageUrl) },
+  };
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
