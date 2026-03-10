@@ -91,8 +91,21 @@ function mapPage(page: any): Record<string, unknown> {
                         .join('');
   const eventStatus = p['진행 여부']?.select?.name ?? '';
 
-  // 대표이미지 속성 → 없으면 Notion 페이지 내장 커버 이미지 사용
-  const imageUrl = getFirstFileUrl(p['대표이미지']?.files ?? []) || getPageCoverUrl(page);
+  // 이미지 URL: 아래 순서로 탐색
+  //   1) '대표이미지' Files 속성 (정확한 이름)
+  //   2) DB의 모든 Files 타입 속성 중 첫 번째 파일 (속성명이 달라도 자동 인식)
+  //   3) Notion 페이지 내장 커버 이미지
+  const imageUrlFromProp = getFirstFileUrl(p['대표이미지']?.files ?? '');
+  const imageUrlFromAnyFile = imageUrlFromProp || (() => {
+    for (const key of Object.keys(p)) {
+      if (p[key]?.type === 'files' && p[key].files?.length) {
+        const url = getFirstFileUrl(p[key].files);
+        if (url) return url;
+      }
+    }
+    return '';
+  })();
+  const imageUrl = imageUrlFromAnyFile || getPageCoverUrl(page);
 
   return {
     id:          page.id,
