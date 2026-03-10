@@ -210,22 +210,7 @@ export const TimeTableCard = () => {
             <ChevronLeft size={18} />
           </button>
 
-          <div className="flex items-center gap-2 flex-wrap justify-center">
-            <span className="text-sm font-medium text-slate-700">{weekLabel}</span>
-            {!isThisWeek && (
-              <button
-                onClick={() => setMonday(getMondayOf(new Date()))}
-                className="text-xs text-violet-600 font-medium px-2 py-0.5 rounded-full bg-violet-50 hover:bg-violet-100 transition-colors"
-              >
-                이번 주
-              </button>
-            )}
-            {isFallback && (
-              <span className="text-xs text-amber-600 font-medium px-2 py-0.5 rounded-full bg-amber-50 border border-amber-100">
-                최근 등록 시간표
-              </span>
-            )}
-          </div>
+          <span className="text-sm font-medium text-slate-700">{weekLabel}</span>
 
           <button
             onClick={() => shiftWeek(1)}
@@ -235,6 +220,25 @@ export const TimeTableCard = () => {
             <ChevronRight size={18} />
           </button>
         </div>
+
+        {/* 이번 주 / 최근 등록 시간표 태그 — 네비게이션 아래 별도 행 */}
+        {(!isThisWeek || isFallback) && (
+          <div className="flex justify-center gap-2 mt-1.5">
+            {!isThisWeek && (
+              <button
+                onClick={() => setMonday(getMondayOf(new Date()))}
+                className="text-xs text-violet-600 font-medium px-2.5 py-0.5 rounded-full bg-violet-50 hover:bg-violet-100 transition-colors"
+              >
+                이번 주로
+              </button>
+            )}
+            {isFallback && (
+              <span className="text-xs text-amber-600 font-medium px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-100">
+                최근 등록 시간표
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── 시간표 본문 ─────────────────────────────────────── */}

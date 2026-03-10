@@ -147,11 +147,11 @@ export const MealCard = () => {
         </div>
 
         {/* 우측: 오늘 버튼 (오늘이 아닐 때만) */}
-        <div className="shrink-0 w-10 flex justify-end">
+        <div className="shrink-0 w-14 flex justify-end">
           {!isToday && (
             <button
               onClick={goToToday}
-              className="text-xs font-semibold px-2 py-1 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors"
+              className="text-xs font-semibold px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors whitespace-nowrap"
             >
               오늘
             </button>

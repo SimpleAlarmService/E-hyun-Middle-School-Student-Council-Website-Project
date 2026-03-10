@@ -126,17 +126,7 @@ export const SchoolScheduleCard = () => {
           <ChevronLeft size={18} />
         </button>
 
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-slate-700">{monthLabel}</span>
-          {!isThisMonth && (
-            <button
-              onClick={() => { setYear(thisYear); setMonth(thisMonth); }}
-              className="text-xs text-emerald-600 font-medium px-2 py-0.5 rounded-full bg-emerald-50 hover:bg-emerald-100 transition-colors"
-            >
-              이번 달
-            </button>
-          )}
-        </div>
+        <span className="text-sm font-semibold text-slate-700">{monthLabel}</span>
 
         <button
           onClick={() => shiftMonth(1)}
@@ -146,6 +136,18 @@ export const SchoolScheduleCard = () => {
           <ChevronRight size={18} />
         </button>
       </div>
+
+      {/* 이번 달 태그 — 네비게이션 아래 별도 행 */}
+      {!isThisMonth && (
+        <div className="flex justify-center pb-2">
+          <button
+            onClick={() => { setYear(thisYear); setMonth(thisMonth); }}
+            className="text-xs text-emerald-600 font-medium px-2.5 py-0.5 rounded-full bg-emerald-50 hover:bg-emerald-100 transition-colors"
+          >
+            이번 달로
+          </button>
+        </div>
+      )}
 
       {/* ── 일정 목록 ────────────────────────────────────────── */}
       <div className="px-5 py-4">
