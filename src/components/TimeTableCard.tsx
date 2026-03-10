@@ -111,7 +111,7 @@ function isToday(weekDates: Date[], dayIdx: number): boolean {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const GRADES  = [1, 2, 3];
-const CLASSES = [1, 2, 3, 4, 5, 6];
+const CLASSES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 export const TimeTableCard = () => {
   const [grade,   setGrade]   = useState<number>(1);
@@ -182,12 +182,12 @@ export const TimeTableCard = () => {
           {/* 반 */}
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-slate-500 font-medium w-4 shrink-0">반</span>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1">
               {CLASSES.map(c => (
                 <button
                   key={c}
                   onClick={() => setClassNm(c)}
-                  className={`w-8 h-8 text-xs font-semibold rounded-lg border transition-colors ${
+                  className={`w-7 h-7 text-xs font-semibold rounded-lg border transition-colors ${
                     classNm === c
                       ? 'bg-violet-600 text-white border-violet-600'
                       : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
