@@ -42,6 +42,9 @@ export const CATEGORIES = {
 
   /** 기타자료실 */
   resourcesEtc: '기타자료실',
+
+  /** EHBS 방송부 */
+  ehbs: 'EHBS',
 } as const;
 
 export type CategoryKey = keyof typeof CATEGORIES;

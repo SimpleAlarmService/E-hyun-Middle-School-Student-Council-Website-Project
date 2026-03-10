@@ -90,6 +90,7 @@ function mapPage(page: any): Record<string, unknown> {
                         .map((r: { plain_text: string }) => r.plain_text)
                         .join('');
   const eventStatus = p['진행 여부']?.select?.name ?? '';
+  const youtubeUrl  = p['유튜브']?.url ?? '';
 
   // 이미지 URL: 아래 순서로 탐색
   //   1) '대표이미지' Files 속성 (정확한 이름)
@@ -115,6 +116,7 @@ function mapPage(page: any): Record<string, unknown> {
     excerpt,
     content,
     eventStatus,
+    youtubeUrl,
     imageUrl,
     imageAlt:    title,
     categories:  category ? [category] : [],
@@ -273,9 +275,8 @@ async function handleList(env: Env, url: URL): Promise<Response> {
 /**
  * GET /image?url=<encoded_notion_s3_url>
  *
- * Notion 내부 업로드 이미지는 서명된 S3 URL로 제공되며 약 1시간 후 만료됩니다.
- * 이 엔드포인트는 Cloudflare CDN을 통해 이미지를 365일간 캐시하여,
- * 원본 S3 URL이 만료된 후에도 이미지를 안정적으로 제공합니다.
+ * Notion S3 이미지를 캐시 없이 매 요청마다 직접 프록시합니다.
+ * CORS 헤더를 붙여서 브라우저에서 바로 로드 가능하게 합니다.
  */
 async function handleImageProxy(url: URL): Promise<Response> {
   const rawUrl = url.searchParams.get('url');
@@ -287,43 +288,21 @@ async function handleImageProxy(url: URL): Promise<Response> {
   }
 
   // url.searchParams.get() 이 이미 percent-decode 하므로 추가 디코딩 불필요
-  // (decodeURIComponent 를 한 번 더 쓰면 S3 서명 파라미터가 손상됨)
   const notionUrl = rawUrl;
 
-  // Cloudflare Cache API: 성공한 응답만 365일 캐시
-  // (cacheEverything 대신 수동 캐시 → 403/만료 에러는 캐시하지 않음)
-  const cache    = caches.default;
-  const cacheKey = new Request(notionUrl);
-
-  const cached = await cache.match(cacheKey);
-  if (cached) return new Response(cached.body, {
-    headers: {
-      'Content-Type':                cached.headers.get('Content-Type') ?? 'image/jpeg',
-      'Cache-Control':               'public, max-age=31536000',
-      'Access-Control-Allow-Origin': '*',
-    },
-  });
-
-  // 캐시 미스 → S3에서 직접 가져오기
   const resp = await fetch(notionUrl);
-
   if (!resp.ok) {
-    // 실패(만료 등)는 캐시 저장 안 함 → 다음 요청에서 재시도 가능
     return new Response('Image not available', { status: resp.status, headers: CORS_HEADERS });
   }
 
   const contentType = resp.headers.get('Content-Type') ?? 'image/jpeg';
-  const response = new Response(resp.body, {
+  return new Response(resp.body, {
     headers: {
       'Content-Type':                contentType,
-      'Cache-Control':               'public, max-age=31536000', // 365일
+      'Cache-Control':               'no-store',
       'Access-Control-Allow-Origin': '*',
     },
   });
-
-  // 성공한 경우만 캐시에 저장
-  await cache.put(cacheKey, response.clone());
-  return response;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

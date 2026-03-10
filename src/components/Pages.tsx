@@ -26,6 +26,8 @@ import {
   InboxIcon,
   ArrowLeft,
   Tag,
+  Play,
+  Radio,
 } from 'lucide-react';
 import { CATEGORIES } from '../lib/config';
 import { usePosts, usePost } from '../hooks/useNotion';
@@ -871,6 +873,137 @@ export const ArchivePage = () => {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // SitemapPage — 사이트맵 (정적)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// EHBSPage — 방송부
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/** YouTube URL에서 비디오 ID 추출 */
+function getYoutubeVideoId(url: string): string | null {
+  const match = url.match(
+    /(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
+  );
+  return match ? match[1] : null;
+}
+
+/** EHBS 카드 (YouTube 영상 or 이미지) */
+const EHBSCard = ({
+  post,
+  onSelectPost,
+}: {
+  post: PostCardData;
+  onSelectPost?: (id: string) => void;
+}) => {
+  const youtubeId = post.youtubeUrl ? getYoutubeVideoId(post.youtubeUrl) : null;
+  const thumbnail = youtubeId
+    ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`
+    : post.imageUrl;
+
+  const isYoutube = !!youtubeId;
+
+  const handleClick = () => {
+    if (isYoutube && post.youtubeUrl) {
+      window.open(post.youtubeUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      onSelectPost?.(post.id);
+    }
+  };
+
+  return (
+    <div
+      className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow group cursor-pointer"
+      onClick={handleClick}
+      role="button"
+      tabIndex={0}
+      aria-label={isYoutube ? `YouTube 영상 보기: ${post.title}` : `게시글 보기: ${post.title}`}
+      onKeyDown={(e) => e.key === 'Enter' && handleClick()}
+    >
+      {/* 썸네일 */}
+      <div className="h-48 bg-slate-900 relative overflow-hidden">
+        {thumbnail ? (
+          <img
+            src={thumbnail}
+            alt={post.imageAlt || post.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+            <Radio size={40} className="text-slate-500" />
+          </div>
+        )}
+
+        {/* YouTube 플레이 버튼 오버레이 */}
+        {isYoutube && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/20 transition-colors">
+            <div className="w-14 h-14 rounded-full bg-red-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+              <Play size={22} className="text-white ml-1" fill="white" />
+            </div>
+          </div>
+        )}
+
+        {/* 날짜 배지 */}
+        {post.date && (
+          <div className="absolute bottom-3 right-3">
+            <span className="text-[10px] font-medium px-2 py-1 rounded bg-black/50 text-white backdrop-blur-sm">
+              {post.date}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* 내용 */}
+      <div className="p-5">
+        <h3 className="font-bold text-base text-slate-800 mb-1.5 group-hover:text-red-600 line-clamp-2 transition-colors">
+          {post.title}
+        </h3>
+        {post.excerpt && (
+          <p className="text-sm text-slate-500 line-clamp-2">{post.excerpt}</p>
+        )}
+        {isYoutube && (
+          <p className="text-xs text-red-500 font-medium mt-2 flex items-center gap-1">
+            <Play size={10} fill="currentColor" /> YouTube에서 보기
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export const EHBSPage = ({
+  onSelectPost,
+}: {
+  onSelectPost?: (id: string) => void;
+}) => {
+  const { data: posts, isLoading, error } = usePosts({
+    category: CATEGORIES.ehbs,
+    perPage:  20,
+  });
+
+  return (
+    <div className="pb-12">
+      <PageHeader
+        title="EHBS 방송부"
+        subtitle="이현중학교 방송부의 영상과 활동을 소개합니다."
+      />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {isLoading ? (
+          <CardSkeleton count={6} />
+        ) : error ? (
+          <ErrorState message={error} />
+        ) : posts.length === 0 ? (
+          <EmptyState message="등록된 방송이 없습니다." />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {posts.map((post) => (
+              <EHBSCard key={post.id} post={post} onSelectPost={onSelectPost} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export const SitemapPage = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
   const sitemapData = [

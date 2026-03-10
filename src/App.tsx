@@ -34,6 +34,7 @@ import {
   SuggestionPage,
   EventProposalPage,
   EventsPage,
+  EHBSPage,
   ArchivePage,
   SitemapPage,
 } from './components/Pages';
@@ -373,6 +374,23 @@ export default function App() {
           />
         ) : (
           <EventsPage onSelectPost={(id) => navigate('event-detail', id)} />
+        );
+
+      case 'ehbs':
+        return (
+          <EHBSPage
+            onSelectPost={(id) => navigate('ehbs-detail', id)}
+          />
+        );
+
+      case 'ehbs-detail':
+        return selectedPostId ? (
+          <NoticeDetailPage
+            postId={selectedPostId}
+            onBack={() => navigate('ehbs')}
+          />
+        ) : (
+          <EHBSPage onSelectPost={(id) => navigate('ehbs-detail', id)} />
         );
 
       case 'archive':

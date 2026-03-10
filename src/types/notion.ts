@@ -35,6 +35,8 @@ export interface PostCardData {
   categories: string[];
   /** Notion 페이지 외부 URL (자료실 외부 링크 등) */
   link: string;
+  /** YouTube 영상 URL (EHBS 방송부용, DB 속성 「유튜브」) */
+  youtubeUrl?: string;
   /** 작성자 (기본값: 학생자치회) */
   author: string;
 }

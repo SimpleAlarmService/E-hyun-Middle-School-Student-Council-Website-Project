@@ -88,6 +88,7 @@ export const Header = ({ onNavigate }: { onNavigate: (page: string) => void }) =
     { title: '학생참여',   id: 'participation',  subItems: ['건의함', '행사 제안'] },
     { title: '학생회 행사',id: 'events',         subItems: ['스포츠라이트', '행사 안내', '체육대회/이현제'] },
     { title: '자료실',     id: 'archive',        subItems: ['회의록', '기타자료실'] },
+    { title: 'EHBS',       id: 'ehbs',           subItems: [] },
   ];
 
   const handleNavigate = (id: string) => {
