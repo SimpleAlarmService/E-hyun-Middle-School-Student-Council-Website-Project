@@ -436,18 +436,6 @@ export const NoticeDetailPage = ({ postId, onBack }: NoticeDetailPageProps) => {
 
   return (
     <div className="pb-12">
-      {/* 대표 이미지 — 제목 헤더 위 전체 너비 배너 */}
-      {coverSrc && (
-        <div className="w-full max-h-72 overflow-hidden bg-slate-100">
-          <img
-            src={coverSrc}
-            alt={post.imageAlt || post.title}
-            className="w-full h-full object-cover"
-            loading="eager"
-          />
-        </div>
-      )}
-
       {/* 게시글 헤더 */}
       <div className="bg-white border-b border-slate-200 py-10 mb-8">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -479,6 +467,18 @@ export const NoticeDetailPage = ({ postId, onBack }: NoticeDetailPageProps) => {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+
+        {/* 대표 이미지 — 본문 최상단 첨부 이미지처럼 표시 */}
+        {coverSrc && (
+          <figure className="my-2">
+            <img
+              src={coverSrc}
+              alt={post.imageAlt || post.title}
+              className="w-full rounded-xl border border-slate-200 shadow-sm"
+              loading="eager"
+            />
+          </figure>
+        )}
 
         {/* 내용 속성 (DB 「내용」 필드가 있으면 블록보다 먼저 표시) */}
         {post.content && (
