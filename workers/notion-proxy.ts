@@ -286,7 +286,9 @@ async function handleImageProxy(url: URL): Promise<Response> {
     });
   }
 
-  const notionUrl = decodeURIComponent(rawUrl);
+  // url.searchParams.get() 이 이미 percent-decode 하므로 추가 디코딩 불필요
+  // (decodeURIComponent 를 한 번 더 쓰면 S3 서명 파라미터가 손상됨)
+  const notionUrl = rawUrl;
 
   // Cloudflare Cache API: 성공한 응답만 365일 캐시
   // (cacheEverything 대신 수동 캐시 → 403/만료 에러는 캐시하지 않음)
