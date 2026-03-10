@@ -288,22 +288,40 @@ async function handleImageProxy(url: URL): Promise<Response> {
 
   const notionUrl = decodeURIComponent(rawUrl);
 
-  // Cloudflare CDN에 365일 캐시 (S3 URL 만료 후에도 제공 가능)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const resp = await fetch(notionUrl, { cf: { cacheTtl: 86400 * 365, cacheEverything: true } } as any);
+  // Cloudflare Cache API: 성공한 응답만 365일 캐시
+  // (cacheEverything 대신 수동 캐시 → 403/만료 에러는 캐시하지 않음)
+  const cache    = caches.default;
+  const cacheKey = new Request(notionUrl);
+
+  const cached = await cache.match(cacheKey);
+  if (cached) return new Response(cached.body, {
+    headers: {
+      'Content-Type':                cached.headers.get('Content-Type') ?? 'image/jpeg',
+      'Cache-Control':               'public, max-age=31536000',
+      'Access-Control-Allow-Origin': '*',
+    },
+  });
+
+  // 캐시 미스 → S3에서 직접 가져오기
+  const resp = await fetch(notionUrl);
 
   if (!resp.ok) {
+    // 실패(만료 등)는 캐시 저장 안 함 → 다음 요청에서 재시도 가능
     return new Response('Image not available', { status: resp.status, headers: CORS_HEADERS });
   }
 
   const contentType = resp.headers.get('Content-Type') ?? 'image/jpeg';
-  return new Response(resp.body, {
+  const response = new Response(resp.body, {
     headers: {
-      'Content-Type':               contentType,
-      'Cache-Control':              'public, max-age=31536000', // 365일
+      'Content-Type':                contentType,
+      'Cache-Control':               'public, max-age=31536000', // 365일
       'Access-Control-Allow-Origin': '*',
     },
   });
+
+  // 성공한 경우만 캐시에 저장
+  await cache.put(cacheKey, response.clone());
+  return response;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
