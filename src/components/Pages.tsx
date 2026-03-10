@@ -324,55 +324,71 @@ export const NoticesPage = ({ onSelectPost }: NoticesPageProps) => {
       <PageHeader title="공지사항" subtitle="학생자치회의 새로운 소식을 확인하세요." />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {isLoading ? (
-          <PageSkeleton rows={8} />
+          <CardSkeleton count={6} />
         ) : error ? (
           <ErrorState message={error} />
         ) : posts.length === 0 ? (
           <EmptyState message="등록된 공지사항이 없습니다." />
         ) : (
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="px-6 py-4 text-sm font-bold text-slate-700 w-16">번호</th>
-                  <th className="px-6 py-4 text-sm font-bold text-slate-700">제목</th>
-                  <th className="px-6 py-4 text-sm font-bold text-slate-700 w-28 hidden sm:table-cell">분류</th>
-                  <th className="px-6 py-4 text-sm font-bold text-slate-700 w-28 hidden md:table-cell">작성자</th>
-                  <th className="px-6 py-4 text-sm font-bold text-slate-700 w-32">날짜</th>
-                </tr>
-              </thead>
-              <tbody>
-                {posts.map((post, index) => (
-                  <tr
-                    key={post.id}
-                    className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors"
-                    onClick={() => onSelectPost?.(post.id)}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`게시글 보기: ${post.title}`}
-                    onKeyDown={(e) => e.key === 'Enter' && onSelectPost?.(post.id)}
-                  >
-                    <td className="px-6 py-4 text-sm text-slate-400">{posts.length - index}</td>
-                    <td className="px-6 py-4 text-sm text-slate-800 font-medium">{post.title}</td>
-                    <td className="px-6 py-4 text-sm text-slate-500 hidden sm:table-cell">
-                      {post.categories[0] ? (
-                        <span className="px-2 py-0.5 text-[10px] rounded-full bg-blue-50 text-blue-600 border border-blue-100 font-medium">
-                          {post.categories[0]}
-                        </span>
-                      ) : '-'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-500 hidden md:table-cell">{post.author}</td>
-                    <td className="px-6 py-4 text-sm text-slate-500">{post.date}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {posts.map((post) => (
+              <NoticeCard key={post.id} post={post} onSelectPost={onSelectPost} />
+            ))}
           </div>
         )}
       </div>
     </div>
   );
 };
+
+/** 공지사항 카드 */
+const NoticeCard = ({ post, onSelectPost }: { post: PostCardData; onSelectPost?: (id: string) => void }) => (
+  <div
+    className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow group cursor-pointer"
+    onClick={() => onSelectPost?.(post.id)}
+    role="button"
+    tabIndex={0}
+    aria-label={`게시글 보기: ${post.title}`}
+    onKeyDown={(e) => e.key === 'Enter' && onSelectPost?.(post.id)}
+  >
+    {/* 썸네일 */}
+    <div className="h-48 bg-slate-100 relative overflow-hidden">
+      {post.imageUrl ? (
+        <img
+          src={post.imageUrl}
+          alt={post.imageAlt}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          loading="lazy"
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
+          <FileText size={40} className="text-slate-400" />
+        </div>
+      )}
+      {/* 카테고리 배지 */}
+      {post.categories[0] && (
+        <div className="absolute top-4 left-4">
+          <span className="text-xs font-bold px-2 py-1 rounded bg-blue-600 text-white shadow-sm">
+            {post.categories[0]}
+          </span>
+        </div>
+      )}
+    </div>
+
+    {/* 내용 */}
+    <div className="p-6">
+      <h3 className="font-bold text-lg text-slate-800 mb-2 group-hover:text-blue-700 line-clamp-2">
+        {post.title}
+      </h3>
+      <p className="text-sm text-slate-500 flex items-center gap-2 mb-2">
+        <Calendar size={14} /> {post.date}
+      </p>
+      {post.excerpt && (
+        <p className="text-sm text-slate-500 line-clamp-2">{post.excerpt}</p>
+      )}
+    </div>
+  </div>
+);
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // NoticeDetailPage — 게시글 상세
