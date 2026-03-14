@@ -10,8 +10,9 @@
  *   GET /posts/:pageId
  *
  * 환경변수 (wrangler secret put):
- *   NOTION_API_KEY       — Notion Integration Token
- *   NOTION_DATABASE_ID   — 게시글 Notion Database ID
+ *   NOTION_API_KEY            — Notion Integration Token
+ *   NOTION_DATABASE_ID        — 학생자치회 게시글 Notion Database ID
+ *   NOTION_EHBS_DATABASE_ID   — EHBS 방송부 전용 Database ID (선택)
  *
  * Notion DB 속성:
  *   제목(Title) / 카테고리(Select) / 작성일(Date) / 공개(Checkbox) / 요약(Rich Text) / 대표이미지(Files)
@@ -20,6 +21,7 @@
 export interface Env {
   NOTION_API_KEY: string;
   NOTION_DATABASE_ID: string;
+  NOTION_EHBS_DATABASE_ID?: string; // EHBS 방송부 전용 DB (선택)
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -75,6 +77,13 @@ function getPageCoverUrl(page: any): string {
   return '';
 }
 
+/** YouTube URL → 고화질 썸네일 URL (없으면 '') */
+function getYoutubeThumbnail(youtubeUrl: string): string {
+  if (!youtubeUrl) return '';
+  const m = youtubeUrl.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
+  return m ? `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg` : '';
+}
+
 /** Notion 페이지 → PostCardData */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapPage(page: any): Record<string, unknown> {
@@ -82,20 +91,23 @@ function mapPage(page: any): Record<string, unknown> {
 
   const title       = p['제목']?.title?.[0]?.plain_text ?? '';
   const category    = p['카테고리']?.select?.name ?? '';
-  const rawDate     = p['작성일']?.date?.start ?? '';
+  // '작성일' 우선, 없으면 EHBS DB의 '게시일' 사용
+  const rawDate     = p['작성일']?.date?.start ?? p['게시일']?.date?.start ?? '';
   const excerpt     = (p['요약']?.rich_text ?? [])
                         .map((r: { plain_text: string }) => r.plain_text)
                         .join('');
-  const content     = (p['내용']?.rich_text ?? [])
+  const content     = (p['내용']?.rich_text ?? p['본문']?.rich_text ?? [])
                         .map((r: { plain_text: string }) => r.plain_text)
                         .join('');
   const eventStatus = p['진행 여부']?.select?.name ?? '';
-  const youtubeUrl  = p['유튜브']?.url ?? '';
+  // '유튜브' 우선, 없으면 EHBS DB의 '유튜브 링크' 사용
+  const youtubeUrl  = p['유튜브']?.url ?? p['유튜브 링크']?.url ?? '';
 
   // 이미지 URL: 아래 순서로 탐색
   //   1) '대표이미지' Files 속성 (정확한 이름)
   //   2) DB의 모든 Files 타입 속성 중 첫 번째 파일 (속성명이 달라도 자동 인식)
   //   3) Notion 페이지 내장 커버 이미지
+  //   4) 유튜브 링크가 있으면 유튜브 썸네일 자동 사용
   const imageUrlFromProp = getFirstFileUrl(p['대표이미지']?.files ?? '');
   const imageUrlFromAnyFile = imageUrlFromProp || (() => {
     for (const key of Object.keys(p)) {
@@ -106,7 +118,7 @@ function mapPage(page: any): Record<string, unknown> {
     }
     return '';
   })();
-  const imageUrl = imageUrlFromAnyFile || getPageCoverUrl(page);
+  const imageUrl = imageUrlFromAnyFile || getPageCoverUrl(page) || getYoutubeThumbnail(youtubeUrl);
 
   return {
     id:          page.id,
@@ -157,12 +169,13 @@ async function notionFetch(
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 /**
- * NOTION_DATABASE_ID 가 실제로는 페이지 ID일 때,
- * 해당 페이지의 자식 블록 중 첫 번째 child_database 블록 ID를 반환합니다.
- * 처음부터 데이터베이스 ID라면 그대로 반환합니다.
+ * 주어진 raw ID가 데이터베이스 ID인지 페이지 ID인지 자동 판별합니다.
+ * - 데이터베이스 ID → 그대로 반환
+ * - 페이지 ID      → 하위 첫 번째 child_database 블록 ID를 반환
+ * rawId 생략 시 env.NOTION_DATABASE_ID 사용
  */
-async function resolveDbId(env: Env): Promise<string> {
-  const raw = env.NOTION_DATABASE_ID;
+async function resolveDbId(env: Env, rawId?: string): Promise<string> {
+  const raw = rawId ?? env.NOTION_DATABASE_ID;
   // 먼저 데이터베이스로 직접 접근 시도
   try {
     await notionFetch(env, `/databases/${raw}`);
@@ -194,30 +207,42 @@ async function handleList(env: Env, url: URL): Promise<Response> {
   const limit      = Math.min(Number(url.searchParams.get('limit') ?? 10), 100);
   const cursor     = url.searchParams.get('cursor') ?? undefined;
 
-  const dbId = await resolveDbId(env);
+  // EHBS 전용 DB가 설정된 경우 해당 DB 사용 (이미 전용 DB이므로 카테고리 필터 불필요)
+  const isEhbs = category === 'EHBS' && !!env.NOTION_EHBS_DATABASE_ID;
+  const dbId   = isEhbs
+    ? await resolveDbId(env, env.NOTION_EHBS_DATABASE_ID)
+    : await resolveDbId(env);
 
   // 공개(Checkbox = true) 필터는 항상 적용
   const filters: unknown[] = [
     { property: '공개', checkbox: { equals: true } },
   ];
 
-  if (categories.length > 1) {
-    // 복수 카테고리 → OR 필터
-    filters.push({
-      or: categories.map((cat) => ({
-        property: '카테고리',
-        select:   { equals: cat },
-      })),
-    });
-  } else if (categories.length === 1) {
-    filters.push({ property: '카테고리', select: { equals: categories[0] } });
-  } else if (category) {
-    filters.push({ property: '카테고리', select: { equals: category } });
+  // EHBS 전용 DB는 전체가 EHBS 게시물이므로 카테고리 필터 생략
+  if (!isEhbs) {
+    if (categories.length > 1) {
+      // 복수 카테고리 → OR 필터
+      filters.push({
+        or: categories.map((cat) => ({
+          property: '카테고리',
+          select:   { equals: cat },
+        })),
+      });
+    } else if (categories.length === 1) {
+      filters.push({ property: '카테고리', select: { equals: categories[0] } });
+    } else if (category) {
+      filters.push({ property: '카테고리', select: { equals: category } });
+    }
   }
+
+  // EHBS 전용 DB는 '게시일' 필드 사용, 메인 DB는 '작성일' 필드 사용
+  const sorts = isEhbs
+    ? [{ property: '게시일', direction: 'descending' }]
+    : [{ property: '작성일', direction: 'descending' }];
 
   const requestBody: Record<string, unknown> = {
     filter:    { and: filters },
-    sorts:     [{ property: '작성일', direction: 'descending' }],
+    sorts,
     page_size: limit,
   };
   if (cursor) requestBody.start_cursor = cursor;
