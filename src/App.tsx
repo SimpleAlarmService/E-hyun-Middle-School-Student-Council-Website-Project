@@ -38,6 +38,9 @@ import {
   ArchivePage,
   ClubsPage,
   ClubDetailPage,
+  ClubIntroPage,
+  ClubGalleryPage,
+  ClubApplyPage,
   SitemapPage,
 } from './components/Pages';
 import { useHomeEvents, useHomeArchive } from './hooks/useNotion';
@@ -314,18 +317,43 @@ const HomePage = ({ navigate }: HomePageProps) => {
 // App — 루트 컴포넌트 & 라우터
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+// ────────────────────────────────────────────────────────────
+// URL 해시 파싱 (Cloudflare Pages 정적 사이트 딥링크 지원)
+//   #club/<slug>  → club-detail 페이지로 직접 진입
+// ────────────────────────────────────────────────────────────
+function parseInitialHash(): { page: string; postId: string | null } {
+  try {
+    const hash = window.location.hash.replace(/^#\/?/, '');
+    if (hash.startsWith('club/')) {
+      const slug = hash.replace('club/', '').trim();
+      if (slug) return { page: 'club-detail', postId: slug };
+    }
+  } catch { /* ignore */ }
+  return { page: 'home', postId: null };
+}
+
 export default function App() {
-  const [currentPage, setCurrentPage]       = useState('home');
-  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const initial = parseInitialHash();
+  const [currentPage, setCurrentPage]       = useState(initial.page);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(initial.postId);
 
   /**
    * 내비게이션 함수
-   * - page:   이동할 페이지 키 (예: 'home', 'notices', 'notice-detail')
-   * - postId: 게시글 상세 조회 시 ID (선택)
+   * - page:   이동할 페이지 키 (예: 'home', 'notices', 'club-detail')
+   * - postId: 게시글/동아리 식별자 (slug 또는 Notion UUID)
    */
   const navigate = useCallback((page: string, postId?: string) => {
     setCurrentPage(page);
     setSelectedPostId(postId ?? null);
+
+    // URL 해시 동기화 — club-detail은 slug를 해시에 반영해 공유 가능
+    if (page === 'club-detail' && postId) {
+      window.history.replaceState(null, '', `#club/${postId}`);
+    } else if (page === 'home') {
+      window.history.replaceState(null, '', window.location.pathname);
+    } else {
+      window.history.replaceState(null, '', `#${page}`);
+    }
   }, []);
 
   // 페이지 이동 시 최상단으로 스크롤
@@ -402,22 +430,34 @@ export default function App() {
       case 'archive':
         return <ArchivePage />;
 
+      // ── 자율동아리 서브페이지 ──────────────────────────────
+      case 'clubs-intro':
+        return <ClubIntroPage onNavigate={navigate} />;
+
       case 'clubs':
         return (
           <ClubsPage
-            onSelectClub={(id) => navigate('club-detail', id)}
+            onSelectClub={(id, slug) => navigate('club-detail', slug || id)}
           />
         );
 
       case 'club-detail':
+        // selectedPostId가 slug이면 useClubUnified가 slug 조회,
+        // UUID이면 ID 조회로 자동 분기 (하위 호환 유지)
         return selectedPostId ? (
           <ClubDetailPage
-            clubId={selectedPostId}
+            clubIdentifier={selectedPostId}
             onBack={() => navigate('clubs')}
           />
         ) : (
-          <ClubsPage onSelectClub={(id) => navigate('club-detail', id)} />
+          <ClubsPage onSelectClub={(id, slug) => navigate('club-detail', slug || id)} />
         );
+
+      case 'clubs-gallery':
+        return <ClubGalleryPage onNavigate={navigate} />;
+
+      case 'clubs-apply':
+        return <ClubApplyPage onNavigate={navigate} />;
 
       case 'sitemap':
         return <SitemapPage onNavigate={navigate} />;

@@ -88,9 +88,20 @@ export async function fetchClubs(signal?: AbortSignal): Promise<ClubListResponse
   };
 }
 
-/** 동아리 단건 상세 조회 */
+/** 동아리 단건 상세 조회 (Notion 페이지 ID 기반) */
 export async function fetchClub(id: string, signal?: AbortSignal): Promise<ClubDetailResponse> {
   const res = await fetch(`${WORKER_BASE_URL}/clubs/${id}`, { signal });
+  if (!res.ok) throw new Error(`Worker ${res.status}`);
+  const json = await res.json() as ClubDetailResponse;
+  return {
+    ...json,
+    club: { ...json.club, imageUrl: notionImageUrl(json.club.imageUrl) },
+  };
+}
+
+/** 동아리 단건 상세 조회 (slug 기반 — URL 딥링크 지원) */
+export async function fetchClubBySlug(slug: string, signal?: AbortSignal): Promise<ClubDetailResponse> {
+  const res = await fetch(`${WORKER_BASE_URL}/clubs/by-slug/${encodeURIComponent(slug)}`, { signal });
   if (!res.ok) throw new Error(`Worker ${res.status}`);
   const json = await res.json() as ClubDetailResponse;
   return {

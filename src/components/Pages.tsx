@@ -31,9 +31,17 @@ import {
   Trophy,
   Star,
   Image as ImageIcon,
+  BookOpen,
+  Layers,
+  ClipboardList,
+  Music,
+  Dumbbell,
+  Palette,
+  GraduationCap,
+  CheckCircle2,
 } from 'lucide-react';
 import { CATEGORIES } from '../lib/config';
-import { usePosts, usePost, useClubs, useClub } from '../hooks/useNotion';
+import { usePosts, usePost, useClubs, useClubUnified } from '../hooks/useNotion';
 import { deriveEventStatus, mapEventStatus } from '../lib/api';
 import type { PostCardData, NotionBlock, NotionRichText, ClubData } from '../types/notion';
 
@@ -1050,15 +1058,16 @@ const ClubCard = ({
   onSelect,
 }: {
   club:     ClubData;
-  onSelect: (id: string) => void;
+  /** id: Notion UUID, slug: 슬러그 (있으면 slug 우선 전달) */
+  onSelect: (id: string, slug: string) => void;
 }) => (
   <div
     className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-lg hover:border-blue-200 transition-all cursor-pointer group"
-    onClick={() => onSelect(club.id)}
+    onClick={() => onSelect(club.id, club.slug)}
     role="button"
     tabIndex={0}
     aria-label={`${club.name} 상세 보기`}
-    onKeyDown={(e) => e.key === 'Enter' && onSelect(club.id)}
+    onKeyDown={(e) => e.key === 'Enter' && onSelect(club.id, club.slug)}
   >
     {/* 대표이미지 */}
     <div className="h-44 bg-slate-100 relative overflow-hidden">
@@ -1108,7 +1117,8 @@ const FIELD_ALL = '전체';
 export const ClubsPage = ({
   onSelectClub,
 }: {
-  onSelectClub: (id: string) => void;
+  /** id: Notion UUID, slug: 슬러그 (없으면 빈 문자열) */
+  onSelectClub: (id: string, slug: string) => void;
 }) => {
   const { data: clubs, isLoading, error } = useClubs();
   const [activeField, setActiveField] = useState(FIELD_ALL);
@@ -1177,7 +1187,11 @@ export const ClubsPage = ({
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filtered.map((club) => (
-              <ClubCard key={club.id} club={club} onSelect={onSelectClub} />
+              <ClubCard
+                key={club.id}
+                club={club}
+                onSelect={(id, slug) => onSelectClub(id, slug)}
+              />
             ))}
           </div>
         )}
@@ -1190,14 +1204,27 @@ export const ClubsPage = ({
 // ClubDetailPage — 동아리 상세
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+/** 활동상태 → 배지 색상 */
+function statusBadgeClass(status: string): string {
+  if (status.includes('활동')) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (status.includes('모집')) return 'bg-blue-50 text-blue-700 border-blue-200';
+  if (status.includes('시즌')) return 'bg-amber-50 text-amber-700 border-amber-200';
+  if (status.includes('휴면')) return 'bg-slate-100 text-slate-500 border-slate-200';
+  return 'bg-slate-50 text-slate-600 border-slate-200';
+}
+
 export const ClubDetailPage = ({
-  clubId,
+  clubIdentifier,
   onBack,
 }: {
-  clubId: string;
+  /**
+   * Notion 페이지 ID 또는 slug 중 하나.
+   * UUID 패턴이면 ID로, 아니면 slug로 자동 조회합니다.
+   */
+  clubIdentifier: string;
   onBack: () => void;
 }) => {
-  const { detail, isLoading, error } = useClub(clubId);
+  const { detail, isLoading, error } = useClubUnified(clubIdentifier);
 
   if (isLoading) {
     return (
@@ -1242,11 +1269,16 @@ export const ClubDetailPage = ({
             <ArrowLeft size={16} /> 목록으로
           </button>
 
-          {/* 활동분야 배지 */}
+          {/* 배지 모음 */}
           <div className="flex flex-wrap gap-2 mb-3">
             {club.field && (
               <span className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border font-medium ${fieldBadgeClass(club.field)}`}>
                 <Tag size={10} /> {club.field}
+              </span>
+            )}
+            {club.status && (
+              <span className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border font-medium ${statusBadgeClass(club.status)}`}>
+                {club.status}
               </span>
             )}
             {club.hasCompetition && (
@@ -1259,8 +1291,8 @@ export const ClubDetailPage = ({
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
             {club.name}
           </h1>
-          {club.status && (
-            <p className="text-sm text-slate-400">{club.status}</p>
+          {club.slug && (
+            <p className="text-xs text-slate-300 font-mono mt-1">/{club.slug}</p>
           )}
         </div>
       </div>
@@ -1278,18 +1310,27 @@ export const ClubDetailPage = ({
           </figure>
         )}
 
-        {/* 설명 */}
+        {/* 짧은 설명 */}
         {club.description && (
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-6">
+            <p className="text-blue-800 leading-relaxed whitespace-pre-line font-medium">
+              {club.description}
+            </p>
+          </div>
+        )}
+
+        {/* 상세 설명 */}
+        {club.detailDesc && (
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
             <p className="text-slate-700 leading-relaxed whitespace-pre-line">
-              {club.description}
+              {club.detailDesc}
             </p>
           </div>
         )}
 
         {/* Notion 본문 블록 */}
         <article className="prose prose-slate max-w-none prose-headings:font-bold prose-a:text-blue-600 prose-img:rounded-lg">
-          <NotionBlockRenderer blocks={blocks} hideEmptyMessage={!!club.description} />
+          <NotionBlockRenderer blocks={blocks} hideEmptyMessage={!!(club.description || club.detailDesc)} />
         </article>
 
         {/* 목록으로 */}
@@ -1306,6 +1347,266 @@ export const ClubDetailPage = ({
   );
 };
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ClubIntroPage — 자율동아리 소개 (정적)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/** 활동분야별 아이콘 매핑 */
+const FIELD_ICONS: Record<string, React.ReactNode> = {
+  공연: <Music size={28} className="text-purple-500" />,
+  체육: <Dumbbell size={28} className="text-green-500" />,
+  학술: <GraduationCap size={28} className="text-blue-500" />,
+  예술: <Palette size={28} className="text-rose-500" />,
+  기타: <Star size={28} className="text-slate-500" />,
+};
+
+export const ClubIntroPage = ({
+  onNavigate,
+}: {
+  onNavigate: (page: string) => void;
+}) => (
+  <div className="pb-16">
+    <PageHeader
+      title="자율동아리 소개"
+      subtitle="이현중학교 자율동아리 제도를 안내합니다."
+    />
+
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+
+      {/* 안내 배너 */}
+      <div className="bg-blue-600 text-white rounded-2xl p-8 shadow-lg">
+        <h2 className="text-xl font-bold mb-3">자율동아리란?</h2>
+        <p className="leading-relaxed text-blue-100">
+          이현중학교 자율동아리는 학생들이 자발적으로 구성하여 활동하는 소모임입니다.
+          공연, 체육, 학술, 예술 등 다양한 분야에서 학생들의 끼와 재능을 발휘하고,
+          대회·공연·행사 등 교내외 활동에 참여하며 성장할 수 있습니다.
+        </p>
+      </div>
+
+      {/* 활동 분야 */}
+      <section>
+        <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+          <Layers size={20} className="text-blue-600" /> 활동 분야
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+          {(['공연', '체육', '학술', '예술', '기타'] as const).map((field) => (
+            <div
+              key={field}
+              className="bg-white border border-slate-200 rounded-xl p-5 flex flex-col items-center gap-3 shadow-sm hover:shadow-md transition-shadow"
+            >
+              {FIELD_ICONS[field]}
+              <span className="font-semibold text-slate-800">{field}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 운영 방식 */}
+      <section>
+        <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+          <BookOpen size={20} className="text-blue-600" /> 운영 방식
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[
+            { icon: <Users size={20} className="text-blue-500" />,       title: '자율 구성', desc: '학생들이 자발적으로 팀을 구성합니다.' },
+            { icon: <Calendar size={20} className="text-green-500" />,    title: '정기 활동', desc: '학기 중 정기적으로 모여 활동합니다.' },
+            { icon: <Trophy size={20} className="text-amber-500" />,      title: '대회 참가', desc: '교외 대회·공연에 학교 대표로 출전합니다.' },
+            { icon: <CheckCircle2 size={20} className="text-purple-500" />, title: '학교 지원', desc: '학생자치회와 학교의 지원을 받을 수 있습니다.' },
+          ].map((item) => (
+            <div key={item.title} className="bg-slate-50 border border-slate-200 rounded-xl p-5 flex gap-4">
+              <div className="mt-0.5 shrink-0">{item.icon}</div>
+              <div>
+                <p className="font-semibold text-slate-800 mb-1">{item.title}</p>
+                <p className="text-sm text-slate-500">{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <button
+          onClick={() => onNavigate('clubs')}
+          className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors text-center"
+        >
+          동아리 목록 보기
+        </button>
+        <button
+          onClick={() => onNavigate('clubs-apply')}
+          className="flex-1 px-6 py-3 border-2 border-blue-600 text-blue-700 font-semibold rounded-xl hover:bg-blue-50 transition-colors text-center"
+        >
+          지원 신청 안내
+        </button>
+      </div>
+
+    </div>
+  </div>
+);
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ClubGalleryPage — 활동 기록 갤러리
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const ClubGalleryPage = ({
+  onNavigate,
+}: {
+  onNavigate: (page: string) => void;
+}) => {
+  const { data: posts, isLoading, error } = usePosts({
+    categories: [CATEGORIES.gallery, CATEGORIES.sportsDay, CATEGORIES.events],
+    perPage:    24,
+  });
+
+  return (
+    <div className="pb-12">
+      <PageHeader
+        title="활동 기록"
+        subtitle="자율동아리의 다양한 활동 순간들을 소개합니다."
+      />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* 안내 */}
+        <div className="mb-8 p-4 bg-amber-50 border border-amber-100 rounded-xl flex gap-3 items-start">
+          <Star size={18} className="text-amber-500 mt-0.5 shrink-0" />
+          <p className="text-sm text-amber-800 leading-relaxed">
+            스포츠라이트·행사 게시판에 등록된 최근 활동 기록을 보여줍니다.
+            더 많은 활동 기록은 <button className="underline font-medium" onClick={() => onNavigate('events')}>학생회 행사</button> 페이지에서 확인하세요.
+          </p>
+        </div>
+
+        {isLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="aspect-square bg-slate-200 rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : error ? (
+          <ErrorState message={error} />
+        ) : posts.length === 0 ? (
+          <EmptyState message="등록된 활동 기록이 없습니다." />
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {posts.map((post) => (
+              <div
+                key={post.id}
+                className="relative aspect-square rounded-xl overflow-hidden bg-slate-100 group cursor-pointer shadow-sm hover:shadow-lg transition-shadow"
+                onClick={() => onNavigate('events')}
+                role="button"
+                tabIndex={0}
+                aria-label={post.title}
+                onKeyDown={(e) => e.key === 'Enter' && onNavigate('events')}
+              >
+                {post.imageUrl ? (
+                  <img
+                    src={post.imageUrl}
+                    alt={post.imageAlt || post.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
+                    <ImageIcon size={32} className="text-slate-300" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                  <p className="text-white text-xs font-medium line-clamp-2">{post.title}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ClubApplyPage — 활동 지원 신청 안내 (정적)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const ClubApplyPage = ({
+  onNavigate,
+}: {
+  onNavigate: (page: string) => void;
+}) => (
+  <div className="pb-16">
+    <PageHeader
+      title="지원 신청"
+      subtitle="자율동아리 지원·등록 안내입니다."
+    />
+
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+
+      {/* 안내 카드 */}
+      <div className="bg-blue-50 border border-blue-200 rounded-2xl p-8">
+        <h2 className="text-lg font-bold text-blue-900 mb-3 flex items-center gap-2">
+          <ClipboardList size={20} /> 신청 전 확인사항
+        </h2>
+        <ul className="space-y-2 text-sm text-blue-800">
+          {[
+            '동아리 활동에 지속적으로 참여할 의지가 있는 학생',
+            '학교 규정 및 동아리 규칙을 준수하는 학생',
+            '담당 교사의 지도 하에 활동이 진행됩니다',
+            '동아리명·slug 등록 후 학생자치회 심의를 거칩니다',
+          ].map((item) => (
+            <li key={item} className="flex items-start gap-2">
+              <CheckCircle2 size={15} className="text-blue-500 mt-0.5 shrink-0" />
+              {item}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* 신청 절차 */}
+      <section>
+        <h2 className="text-xl font-bold text-slate-900 mb-6">신청 절차</h2>
+        <div className="space-y-4">
+          {[
+            { step: '01', title: '동아리 구성원 모집',    desc: '관심 있는 친구들과 함께 팀을 구성합니다 (최소 3인 이상 권장).', color: 'bg-blue-600' },
+            { step: '02', title: '지도 교사 섭외',        desc: '담당 교사를 정하고 활동 승인을 받습니다.', color: 'bg-indigo-600' },
+            { step: '03', title: '건의함·행사 제안 제출',  desc: '이 웹사이트의 학생참여 → 건의함에 동아리 등록을 요청합니다.', color: 'bg-purple-600' },
+            { step: '04', title: '학생자치회 심의',        desc: '학생자치회에서 신청 내용을 검토하고 결과를 안내합니다.', color: 'bg-pink-600' },
+            { step: '05', title: '사이트 자동 반영',       desc: '승인 후 Notion DB에 등록되면 동아리 목록에 자동으로 나타납니다.', color: 'bg-rose-600' },
+          ].map((item, idx, arr) => (
+            <div key={item.step} className="flex gap-4">
+              <div className="flex flex-col items-center">
+                <div className={`w-10 h-10 ${item.color} text-white rounded-full flex items-center justify-center text-sm font-bold shrink-0`}>
+                  {item.step}
+                </div>
+                {idx < arr.length - 1 && <div className="w-0.5 h-6 bg-slate-200 mt-1" />}
+              </div>
+              <div className="pb-4">
+                <p className="font-semibold text-slate-900 mb-0.5">{item.title}</p>
+                <p className="text-sm text-slate-500">{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA 버튼 */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <button
+          onClick={() => onNavigate('suggestion')}
+          className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+        >
+          <MessageSquare size={18} /> 건의함 바로가기
+        </button>
+        <button
+          onClick={() => onNavigate('clubs')}
+          className="flex-1 px-6 py-3 border-2 border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-colors text-center"
+        >
+          동아리 목록 보기
+        </button>
+      </div>
+
+    </div>
+  </div>
+);
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 export const SitemapPage = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
   const sitemapData = [
     { title: '학생자치회',    id: 'intro',        items: ['학생회 소개', '부서 소개'] },
@@ -1313,7 +1614,7 @@ export const SitemapPage = ({ onNavigate }: { onNavigate: (page: string) => void
     { title: '학생참여',      id: 'participation', items: ['건의함', '행사 제안'] },
     { title: '학생회 행사',   id: 'events',        items: ['스포츠라이트', '행사 안내', '체육대회/이현제'] },
     { title: '자료실',        id: 'archive',       items: ['회의록', '기타자료실'] },
-    { title: '자율동아리',      id: 'clubs',        items: ['동아리 목록'] },
+    { title: '자율동아리',    id: 'clubs-intro',   items: ['동아리 소개', '동아리 목록', '활동 기록', '지원 신청'] },
   ];
 
   return (

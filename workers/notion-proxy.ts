@@ -8,6 +8,9 @@
  * 엔드포인트:
  *   GET /posts?category=공지사항&limit=10&cursor=<cursor>
  *   GET /posts/:pageId
+ *   GET /clubs                  — 자율동아리 목록 (게시여부=true, 정렬순서→이름 정렬)
+ *   GET /clubs/:id              — 동아리 단건 상세 (속성 + 본문 블록)
+ *   GET /clubs/by-slug/:slug    — slug 기반 동아리 상세
  *
  * 환경변수 (wrangler secret put):
  *   NOTION_API_KEY            — Notion Integration Token
@@ -15,8 +18,10 @@
  *   NOTION_EHBS_DATABASE_ID   — EHBS 방송부 전용 Database ID (선택)
  *   NOTION_CLUBS_DATABASE_ID  — 대표 동아리 Database ID (선택)
  *
- * Notion DB 속성:
- *   제목(Title) / 카테고리(Select) / 작성일(Date) / 공개(Checkbox) / 요약(Rich Text) / 대표이미지(Files)
+ * 자율동아리 DB 필수 속성:
+ *   동아리명(Title) / slug(Text) / 활동분야(Select) / 설명(Text) / 상세설명(Text)
+ *   대표이미지(Files) / 활동상태(Select) / 대회참가(Checkbox)
+ *   게시여부(Checkbox) / 정렬순서(Number, 선택)
  */
 
 export interface Env {
@@ -358,12 +363,23 @@ function mapClub(page: any): Record<string, unknown> {
   const p = page.properties ?? {};
 
   const name           = p['동아리명']?.title?.[0]?.plain_text ?? '';
+  // slug: Rich text 속성 (예: bora-dance). 없으면 빈 문자열
+  const slug           = (p['slug']?.rich_text ?? [])
+                           .map((r: { plain_text: string }) => r.plain_text)
+                           .join('')
+                           .trim();
   const field          = p['활동분야']?.select?.name ?? '';
   const description    = (p['설명']?.rich_text ?? [])
                            .map((r: { plain_text: string }) => r.plain_text)
                            .join('');
+  // 상세설명: Rich text 속성 (카드에는 표시 안 하고 상세 페이지에서 사용)
+  const detailDesc     = (p['상세설명']?.rich_text ?? [])
+                           .map((r: { plain_text: string }) => r.plain_text)
+                           .join('');
   const status         = p['활동상태']?.select?.name ?? '';
   const hasCompetition = p['대회참가']?.checkbox ?? false;
+  // 정렬순서: Number (없으면 999로 처리해 뒤로 밀림)
+  const order          = p['정렬순서']?.number ?? 999;
 
   // 대표이미지: Files 속성 → 페이지 커버 순서로 탐색
   const imageUrl = getFirstFileUrl(p['대표이미지']?.files ?? []) || getPageCoverUrl(page);
@@ -371,10 +387,13 @@ function mapClub(page: any): Record<string, unknown> {
   return {
     id:             page.id,
     name,
+    slug,
     field,
     description,
+    detailDesc,
     status,
     hasCompetition,
+    order,
     imageUrl,
     imageAlt:       name,
   };
@@ -383,6 +402,7 @@ function mapClub(page: any): Record<string, unknown> {
 /**
  * GET /clubs
  * 대표 활동 DB에서 게시여부=true 인 동아리 목록 반환
+ * 정렬: 정렬순서(오름차순) → 동아리명(오름차순) — 메모리 정렬로 필드 없는 DB도 안전
  */
 async function handleClubs(env: Env): Promise<Response> {
   if (!env.NOTION_CLUBS_DATABASE_ID) {
@@ -402,8 +422,16 @@ async function handleClubs(env: Env): Promise<Response> {
     },
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const results = (data.results ?? []).map(mapClub) as any[];
+  // 정렬순서(number) → 이름(string) 2차 정렬 (메모리)
+  results.sort((a, b) => {
+    if (a.order !== b.order) return (a.order as number) - (b.order as number);
+    return (a.name as string).localeCompare(b.name as string, 'ko');
+  });
+
   return jsonResponse({
-    results:    (data.results ?? []).map(mapClub),
+    results,
     hasMore:    false,
     nextCursor: null,
   });
@@ -418,6 +446,48 @@ async function handleClubDetail(env: Env, pageId: string): Promise<Response> {
     notionFetch(env, `/pages/${pageId}`),
     notionFetch(env, `/blocks/${pageId}/children?page_size=100`),
   ]);
+
+  return jsonResponse({
+    club:   mapClub(page),
+    blocks: blocksData.results ?? [],
+  });
+}
+
+/**
+ * GET /clubs/by-slug/:slug
+ * slug 값으로 동아리 상세 조회 (URL 공유, 딥링크 지원)
+ */
+async function handleClubBySlug(env: Env, slug: string): Promise<Response> {
+  if (!env.NOTION_CLUBS_DATABASE_ID) {
+    return jsonResponse({ error: 'NOTION_CLUBS_DATABASE_ID not configured' }, 503);
+  }
+
+  const dbId = await resolveDbId(env, env.NOTION_CLUBS_DATABASE_ID);
+
+  const data = await notionFetch(
+    env,
+    `/databases/${dbId}/query`,
+    'POST',
+    {
+      filter: {
+        and: [
+          { property: '게시여부', checkbox:   { equals: true } },
+          { property: 'slug',     rich_text:  { equals: slug }  },
+        ],
+      },
+      page_size: 1,
+    },
+  );
+
+  const page = data.results?.[0];
+  if (!page) {
+    return jsonResponse({ error: `Club with slug "${slug}" not found` }, 404);
+  }
+
+  const blocksData = await notionFetch(
+    env,
+    `/blocks/${page.id}/children?page_size=100`,
+  );
 
   return jsonResponse({
     club:   mapClub(page),
@@ -460,9 +530,15 @@ export default {
         return await handleDetail(env, detailMatch[1]);
       }
 
-      // GET /clubs  — 대표 동아리 목록
+      // GET /clubs  — 자율동아리 목록
       if (path === '/clubs') {
         return await handleClubs(env);
+      }
+
+      // GET /clubs/by-slug/:slug  — slug 기반 동아리 상세 (반드시 /clubs/:id 보다 먼저 매칭)
+      const clubSlugMatch = path.match(/^\/clubs\/by-slug\/([^/]+)$/);
+      if (clubSlugMatch) {
+        return await handleClubBySlug(env, decodeURIComponent(clubSlugMatch[1]));
       }
 
       // GET /clubs/:id  — 동아리 상세

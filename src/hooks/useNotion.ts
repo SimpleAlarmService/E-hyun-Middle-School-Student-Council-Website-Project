@@ -14,7 +14,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { fetchPosts, fetchPost, fetchClubs, fetchClub } from '../lib/api';
+import { fetchPosts, fetchPost, fetchClubs, fetchClub, fetchClubBySlug } from '../lib/api';
 import {
   CATEGORIES,
   HOME_NOTICES_COUNT,
@@ -202,7 +202,7 @@ export interface UseClubReturn {
   error:     string | null;
 }
 
-/** 동아리 단건 상세 */
+/** 동아리 단건 상세 (Notion 페이지 ID 기반) */
 export function useClub(id: string | null): UseClubReturn {
   const [detail,    setDetail]  = useState<ClubDetailResponse | null>(null);
   const [isLoading, setLoading] = useState(false);
@@ -230,4 +230,61 @@ export function useClub(id: string | null): UseClubReturn {
   }, [id]);
 
   return { detail, isLoading, error };
+}
+
+/** 동아리 단건 상세 (slug 기반 — URL 딥링크 지원) */
+export function useClubBySlug(slug: string | null): UseClubReturn {
+  const [detail,    setDetail]  = useState<ClubDetailResponse | null>(null);
+  const [isLoading, setLoading] = useState(false);
+  const [error,     setError]   = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!slug) { setDetail(null); return; }
+
+    setDetail(null);
+    setLoading(true);
+    setError(null);
+
+    const controller = new AbortController();
+
+    fetchClubBySlug(slug, controller.signal)
+      .then(setDetail)
+      .catch((err: Error) => {
+        if (err.name === 'AbortError') return;
+        console.warn('[useNotion/useClubBySlug]', err);
+        setError('동아리 정보를 불러올 수 없습니다.');
+      })
+      .finally(() => setLoading(false));
+
+    return () => controller.abort();
+  }, [slug]);
+
+  return { detail, isLoading, error };
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// useClubUnified — slug 또는 ID 자동 판별
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/** Notion 페이지 UUID 패턴 (32자리 hex 또는 hyphen 구분) */
+function isNotionId(s: string): boolean {
+  return /^[0-9a-f]{32}$/i.test(s) ||
+         /^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(s);
+}
+
+/**
+ * 동아리 단건 상세 — identifier가 UUID이면 ID로, 아니면 slug로 조회
+ *
+ * 사용 예:
+ *   useClubUnified('bora-dance')  → slug 조회
+ *   useClubUnified('abc123...')   → ID 조회 (하위 호환)
+ */
+export function useClubUnified(identifier: string | null): UseClubReturn {
+  const isId = identifier ? isNotionId(identifier) : true;
+
+  // 두 훅 모두 항상 호출 (Rules of Hooks 준수), 한쪽엔 null을 넘겨 비활성화
+  const byId   = useClub(isId  ? identifier : null);
+  const bySlug = useClubBySlug(!isId ? identifier : null);
+
+  return isId ? byId : bySlug;
 }

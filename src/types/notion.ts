@@ -51,14 +51,24 @@ export interface ClubData {
   id: string;
   /** 동아리명 */
   name: string;
+  /**
+   * 고유 슬러그 (예: bora-dance)
+   * — Notion DB 「slug」Text 속성에 직접 입력
+   * — URL 딥링크 라우팅에 사용. 없으면 빈 문자열
+   */
+  slug: string;
   /** 활동분야 (예: 공연, 체육, 학술, 예술, 기타) */
   field: string;
-  /** 설명 */
+  /** 짧은 설명 (목록 카드 미리보기용) */
   description: string;
-  /** 활동상태 (예: 활동중, 휴면) */
+  /** 상세 설명 (상세 페이지에서만 표시) */
+  detailDesc: string;
+  /** 활동상태 (예: 활동 중, 모집 중, 시즌 종료, 휴면) */
   status: string;
   /** 대회참가 여부 */
   hasCompetition: boolean;
+  /** 정렬순서 — 낮을수록 목록 앞쪽에 표시 (없으면 999) */
+  order: number;
   /** 대표이미지 URL */
   imageUrl: string;
   /** 대표이미지 alt */

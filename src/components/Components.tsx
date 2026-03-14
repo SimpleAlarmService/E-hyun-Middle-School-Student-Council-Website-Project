@@ -82,14 +82,15 @@ const InlineEmpty = ({ message }: { message: string }) => (
 export const Header = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  // subItems: { label: 표시 텍스트, id: 라우트 ID }
   const menuItems = [
-    { title: '학생자치회',    id: 'intro',         subItems: ['학생회 소개', '부서 소개'] },
-    { title: '공지사항',      id: 'notices',        subItems: [] },
-    { title: '학생참여',      id: 'participation',  subItems: ['건의함', '행사 제안'] },
-    { title: '학생회 행사',   id: 'events',         subItems: ['스포츠라이트', '행사 안내', '체육대회/이현제'] },
-    { title: '자료실',        id: 'archive',        subItems: ['회의록', '기타자료실'] },
-    { title: '자율동아리',      id: 'clubs',         subItems: ['동아리 목록'] },
-    { title: 'EHBS',          id: 'ehbs',           subItems: [] },
+    { title: '학생자치회',  id: 'intro',         subItems: [{ label: '학생회 소개', id: 'intro' }, { label: '부서 소개', id: 'intro' }] },
+    { title: '공지사항',    id: 'notices',        subItems: [] as { label: string; id: string }[] },
+    { title: '학생참여',    id: 'participation',  subItems: [{ label: '건의함', id: 'suggestion' }, { label: '행사 제안', id: 'event-proposal' }] },
+    { title: '학생회 행사', id: 'events',         subItems: [{ label: '스포츠라이트', id: 'events' }, { label: '행사 안내', id: 'events' }, { label: '체육대회/이현제', id: 'events' }] },
+    { title: '자료실',      id: 'archive',        subItems: [{ label: '회의록', id: 'archive' }, { label: '기타자료실', id: 'archive' }] },
+    { title: '자율동아리',  id: 'clubs-intro',    subItems: [{ label: '동아리 소개', id: 'clubs-intro' }, { label: '동아리 목록', id: 'clubs' }, { label: '활동 기록', id: 'clubs-gallery' }, { label: '지원 신청', id: 'clubs-apply' }] },
+    { title: 'EHBS',        id: 'ehbs',           subItems: [] as { label: string; id: string }[] },
   ];
 
   const handleNavigate = (id: string) => {
@@ -121,14 +122,14 @@ export const Header = ({ onNavigate }: { onNavigate: (page: string) => void }) =
                 <span className="text-slate-700 font-semibold group-hover:text-blue-700 transition-colors text-base">
                   {item.title}
                 </span>
-                <div className="absolute top-full left-0 w-48 bg-white border border-slate-200 shadow-lg rounded-b-lg overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
+                <div className="absolute top-full left-0 w-52 bg-white border border-slate-200 shadow-lg rounded-b-lg overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0">
                   {item.subItems.map((sub) => (
                     <div
-                      key={sub}
+                      key={sub.label}
                       className="block px-4 py-3 text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-700 border-b border-slate-50 last:border-none"
-                      onClick={(e) => { e.stopPropagation(); handleNavigate(item.id); }}
+                      onClick={(e) => { e.stopPropagation(); handleNavigate(sub.id); }}
                     >
-                      {sub}
+                      {sub.label}
                     </div>
                   ))}
                 </div>
@@ -170,11 +171,11 @@ export const Header = ({ onNavigate }: { onNavigate: (page: string) => void }) =
                   <div className="pl-4 flex flex-col space-y-2">
                     {item.subItems.map((sub) => (
                       <div
-                        key={sub}
+                        key={sub.label}
                         className="text-sm text-slate-600 hover:text-blue-600 py-1 cursor-pointer"
-                        onClick={() => handleNavigate(item.id)}
+                        onClick={() => handleNavigate(sub.id)}
                       >
-                        - {sub}
+                        - {sub.label}
                       </div>
                     ))}
                   </div>
@@ -543,12 +544,12 @@ export const Footer = ({ onNavigate }: { onNavigate?: (page: string) => void }) 
           <h4 className="text-white font-bold mb-4">사이트맵</h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 text-sm">
             {[
-              { title: '학생자치회',    page: 'intro',        subs: ['학생회 소개', '부서 소개'] },
-              { title: '공지사항',      page: 'notices',      subs: [] },
-              { title: '학생참여',      page: 'participation',subs: ['건의함', '행사 제안'] },
-              { title: '학생회 행사',   page: 'events',       subs: ['스포츠라이트', '행사 안내', '체육대회/이현제'] },
-              { title: '자료실',        page: 'archive',      subs: ['회의록', '기타자료실'] },
-              { title: '자율동아리',      page: 'clubs',       subs: ['동아리 목록'] },
+              { title: '학생자치회',  page: 'intro',       subs: [{ label: '학생회 소개', id: 'intro' }, { label: '부서 소개', id: 'intro' }] },
+              { title: '공지사항',    page: 'notices',     subs: [] as { label: string; id: string }[] },
+              { title: '학생참여',    page: 'participation',subs: [{ label: '건의함', id: 'suggestion' }, { label: '행사 제안', id: 'event-proposal' }] },
+              { title: '학생회 행사', page: 'events',      subs: [{ label: '스포츠라이트', id: 'events' }, { label: '행사 안내', id: 'events' }, { label: '체육대회/이현제', id: 'events' }] },
+              { title: '자료실',      page: 'archive',     subs: [{ label: '회의록', id: 'archive' }, { label: '기타자료실', id: 'archive' }] },
+              { title: '자율동아리',  page: 'clubs-intro', subs: [{ label: '동아리 소개', id: 'clubs-intro' }, { label: '동아리 목록', id: 'clubs' }, { label: '활동 기록', id: 'clubs-gallery' }, { label: '지원 신청', id: 'clubs-apply' }] },
             ].map(({ title, page, subs }) => (
               <div key={page}>
                 <button
@@ -559,12 +560,12 @@ export const Footer = ({ onNavigate }: { onNavigate?: (page: string) => void }) 
                 </button>
                 <ul className="space-y-1">
                   {subs.map((sub) => (
-                    <li key={sub}>
+                    <li key={sub.label}>
                       <button
-                        onClick={() => onNavigate?.(page)}
+                        onClick={() => onNavigate?.(sub.id)}
                         className="text-slate-400 hover:text-white transition-colors text-left flex items-center gap-1"
                       >
-                        <span className="text-slate-600">›</span> {sub}
+                        <span className="text-slate-600">›</span> {sub.label}
                       </button>
                     </li>
                   ))}
