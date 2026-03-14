@@ -1028,7 +1028,7 @@ export const EHBSPage = ({
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ClubsPage — 학교 대표 활동 (동아리 목록)
+// ClubsPage — 자율동아리 목록
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 /** 활동분야별 배지 색상 */
@@ -1123,8 +1123,8 @@ export const ClubsPage = ({
   return (
     <div className="pb-12">
       <PageHeader
-        title="학교 대표 활동"
-        subtitle="학교를 빛내는 대표 동아리들을 소개합니다."
+        title="자율동아리"
+        subtitle="학교를 빛내는 자율동아리들을 소개합니다."
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1313,7 +1313,7 @@ export const SitemapPage = ({ onNavigate }: { onNavigate: (page: string) => void
     { title: '학생참여',      id: 'participation', items: ['건의함', '행사 제안'] },
     { title: '학생회 행사',   id: 'events',        items: ['스포츠라이트', '행사 안내', '체육대회/이현제'] },
     { title: '자료실',        id: 'archive',       items: ['회의록', '기타자료실'] },
-    { title: '학교 대표 활동', id: 'clubs',        items: ['대표 동아리 목록'] },
+    { title: '자율동아리',      id: 'clubs',        items: ['동아리 목록'] },
   ];
 
   return (

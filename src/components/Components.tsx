@@ -88,7 +88,7 @@ export const Header = ({ onNavigate }: { onNavigate: (page: string) => void }) =
     { title: '학생참여',      id: 'participation',  subItems: ['건의함', '행사 제안'] },
     { title: '학생회 행사',   id: 'events',         subItems: ['스포츠라이트', '행사 안내', '체육대회/이현제'] },
     { title: '자료실',        id: 'archive',        subItems: ['회의록', '기타자료실'] },
-    { title: '학교 대표 활동', id: 'clubs',         subItems: ['대표 동아리 목록'] },
+    { title: '자율동아리',      id: 'clubs',         subItems: ['동아리 목록'] },
     { title: 'EHBS',          id: 'ehbs',           subItems: [] },
   ];
 
@@ -548,7 +548,7 @@ export const Footer = ({ onNavigate }: { onNavigate?: (page: string) => void }) 
               { title: '학생참여',      page: 'participation',subs: ['건의함', '행사 제안'] },
               { title: '학생회 행사',   page: 'events',       subs: ['스포츠라이트', '행사 안내', '체육대회/이현제'] },
               { title: '자료실',        page: 'archive',      subs: ['회의록', '기타자료실'] },
-              { title: '학교 대표 활동', page: 'clubs',       subs: ['대표 동아리 목록'] },
+              { title: '자율동아리',      page: 'clubs',       subs: ['동아리 목록'] },
             ].map(({ title, page, subs }) => (
               <div key={page}>
                 <button
