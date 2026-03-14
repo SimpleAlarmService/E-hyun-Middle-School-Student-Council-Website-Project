@@ -886,18 +886,12 @@ function getYoutubeVideoId(url: string): string | null {
   return match ? match[1] : null;
 }
 
-/** EHBS 카드 (YouTube 인라인 임베드 or 이미지) */
+/** EHBS 카드 — 썸네일 클릭 시 YouTube 새 탭 열기 */
 const EHBSCard = ({
   post,
-  isPlaying,
-  onPlay,
-  onStop,
   onSelectPost,
 }: {
   post: PostCardData;
-  isPlaying: boolean;
-  onPlay: (id: string) => void;
-  onStop: () => void;
   onSelectPost?: (id: string) => void;
 }) => {
   const youtubeId = post.youtubeUrl ? getYoutubeVideoId(post.youtubeUrl) : null;
@@ -906,98 +900,69 @@ const EHBSCard = ({
     : post.imageUrl;
   const isYoutube = !!youtubeId;
 
+  const handleClick = () => {
+    if (isYoutube) {
+      window.open(post.youtubeUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      onSelectPost?.(post.id);
+    }
+  };
+
   return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-
-      {/* 영상 / 썸네일 영역 */}
-      {isPlaying && youtubeId ? (
-        /* ── 인라인 YouTube iframe ── */
-        <div className="relative bg-black" style={{ paddingTop: '56.25%' /* 16:9 */ }}>
-          <iframe
-            className="absolute inset-0 w-full h-full"
-            src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&rel=0`}
-            title={post.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
+    <div
+      className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+      onClick={handleClick}
+      role="button"
+      tabIndex={0}
+      aria-label={isYoutube ? `YouTube에서 보기: ${post.title}` : `게시글 보기: ${post.title}`}
+      onKeyDown={(e) => e.key === 'Enter' && handleClick()}
+    >
+      {/* 썸네일 영역 */}
+      <div className="h-48 bg-slate-900 relative overflow-hidden">
+        {thumbnail ? (
+          <img
+            src={thumbnail}
+            alt={post.imageAlt || post.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
           />
-          {/* 닫기 버튼 */}
-          <button
-            onClick={onStop}
-            className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80 transition-colors"
-            aria-label="영상 닫기"
-          >
-            <ChevronLeft size={14} className="rotate-[135deg]" />
-          </button>
-        </div>
-      ) : (
-        /* ── 썸네일 ── */
-        <div
-          className="h-48 bg-slate-900 relative overflow-hidden cursor-pointer group"
-          onClick={() => isYoutube ? onPlay(post.id) : onSelectPost?.(post.id)}
-          role="button"
-          tabIndex={0}
-          aria-label={isYoutube ? `YouTube 영상 재생: ${post.title}` : `게시글 보기: ${post.title}`}
-          onKeyDown={(e) => e.key === 'Enter' && (isYoutube ? onPlay(post.id) : onSelectPost?.(post.id))}
-        >
-          {thumbnail ? (
-            <img
-              src={thumbnail}
-              alt={post.imageAlt || post.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              loading="lazy"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
-              <Radio size={40} className="text-slate-500" />
-            </div>
-          )}
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+            <Radio size={40} className="text-slate-500" />
+          </div>
+        )}
 
-          {/* YouTube 플레이 버튼 오버레이 */}
-          {isYoutube && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/20 transition-colors">
-              <div className="w-14 h-14 rounded-full bg-red-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                <Play size={22} className="text-white ml-1" fill="white" />
-              </div>
+        {/* YouTube 플레이 버튼 오버레이 */}
+        {isYoutube && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/20 transition-colors">
+            <div className="w-14 h-14 rounded-full bg-red-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+              <Play size={22} className="text-white ml-1" fill="white" />
             </div>
-          )}
+          </div>
+        )}
 
-          {/* 날짜 배지 */}
-          {post.date && (
-            <div className="absolute bottom-3 right-3">
-              <span className="text-[10px] font-medium px-2 py-1 rounded bg-black/50 text-white backdrop-blur-sm">
-                {post.date}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
+        {/* 날짜 배지 */}
+        {post.date && (
+          <div className="absolute bottom-3 right-3">
+            <span className="text-[10px] font-medium px-2 py-1 rounded bg-black/50 text-white backdrop-blur-sm">
+              {post.date}
+            </span>
+          </div>
+        )}
+      </div>
 
       {/* 텍스트 정보 */}
-      <div
-        className={`p-5 ${!isPlaying ? 'cursor-pointer group' : ''}`}
-        onClick={() => !isPlaying && !isYoutube && onSelectPost?.(post.id)}
-      >
-        <h3 className={`font-bold text-base text-slate-800 mb-1.5 line-clamp-2 transition-colors ${!isPlaying && !isYoutube ? 'group-hover:text-blue-700' : ''}`}>
+      <div className="p-5">
+        <h3 className="font-bold text-base text-slate-800 mb-1.5 line-clamp-2 group-hover:text-red-600 transition-colors">
           {post.title}
         </h3>
         {post.excerpt && (
           <p className="text-sm text-slate-500 line-clamp-2">{post.excerpt}</p>
         )}
-        {isYoutube && !isPlaying && (
-          <button
-            onClick={() => onPlay(post.id)}
-            className="mt-2 text-xs text-red-500 font-medium flex items-center gap-1 hover:text-red-600"
-          >
-            <Play size={10} fill="currentColor" /> 영상 재생
-          </button>
-        )}
-        {isYoutube && isPlaying && (
-          <button
-            onClick={onStop}
-            className="mt-2 text-xs text-slate-400 font-medium flex items-center gap-1 hover:text-slate-600"
-          >
-            ■ 재생 중지
-          </button>
+        {isYoutube && (
+          <span className="mt-2 inline-flex items-center gap-1 text-xs text-red-500 font-medium">
+            <Play size={10} fill="currentColor" /> YouTube에서 보기
+          </span>
         )}
       </div>
     </div>
@@ -1013,7 +978,6 @@ export const EHBSPage = ({
     category: CATEGORIES.ehbs,
     perPage:  20,
   });
-  const [playingId, setPlayingId] = useState<string | null>(null);
 
   return (
     <div className="pb-12">
@@ -1034,9 +998,6 @@ export const EHBSPage = ({
               <EHBSCard
                 key={post.id}
                 post={post}
-                isPlaying={playingId === post.id}
-                onPlay={(id) => setPlayingId(id)}
-                onStop={() => setPlayingId(null)}
                 onSelectPost={onSelectPost}
               />
             ))}
