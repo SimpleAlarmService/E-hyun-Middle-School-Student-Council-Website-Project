@@ -7,7 +7,11 @@
  */
 
 import { WORKER_BASE_URL } from './config';
-import type { PostListResponse, PostDetailResponse, ClubListResponse, ClubDetailResponse } from '../types/notion';
+import type {
+  PostListResponse, PostDetailResponse,
+  ClubListResponse, ClubDetailResponse,
+  ClubPostListResponse, ClubPostDetailResponse,
+} from '../types/notion';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 이미지 URL 유틸
@@ -107,6 +111,50 @@ export async function fetchClubBySlug(slug: string, signal?: AbortSignal): Promi
   return {
     ...json,
     club: { ...json.club, imageUrl: notionImageUrl(json.club.imageUrl) },
+  };
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 동아리 활동 게시글 API
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/** 동아리 활동 게시글 목록 조회 */
+export async function fetchClubPosts(
+  params: { limit?: number; cursor?: string } = {},
+  signal?: AbortSignal,
+): Promise<ClubPostListResponse> {
+  const qs = new URLSearchParams();
+  if (params.limit)  qs.set('limit',  String(params.limit));
+  if (params.cursor) qs.set('cursor', params.cursor);
+
+  const res = await fetch(`${WORKER_BASE_URL}/club-posts?${qs}`, { signal });
+  if (!res.ok) throw new Error(`Worker ${res.status}`);
+  const json = await res.json() as ClubPostListResponse;
+  return {
+    ...json,
+    results: json.results.map((p) => ({ ...p, imageUrl: notionImageUrl(p.imageUrl) })),
+  };
+}
+
+/** 동아리 활동 게시글 단건 조회 (Notion 페이지 ID 기반) */
+export async function fetchClubPost(id: string, signal?: AbortSignal): Promise<ClubPostDetailResponse> {
+  const res = await fetch(`${WORKER_BASE_URL}/club-posts/${id}`, { signal });
+  if (!res.ok) throw new Error(`Worker ${res.status}`);
+  const json = await res.json() as ClubPostDetailResponse;
+  return {
+    ...json,
+    post: { ...json.post, imageUrl: notionImageUrl(json.post.imageUrl) },
+  };
+}
+
+/** 동아리 활동 게시글 단건 조회 (slug 기반 — URL 딥링크) */
+export async function fetchClubPostBySlug(slug: string, signal?: AbortSignal): Promise<ClubPostDetailResponse> {
+  const res = await fetch(`${WORKER_BASE_URL}/club-posts/by-slug/${encodeURIComponent(slug)}`, { signal });
+  if (!res.ok) throw new Error(`Worker ${res.status}`);
+  const json = await res.json() as ClubPostDetailResponse;
+  return {
+    ...json,
+    post: { ...json.post, imageUrl: notionImageUrl(json.post.imageUrl) },
   };
 }
 

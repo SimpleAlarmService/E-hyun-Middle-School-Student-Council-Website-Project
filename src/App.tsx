@@ -40,6 +40,7 @@ import {
   ClubDetailPage,
   ClubIntroPage,
   ClubGalleryPage,
+  ClubPostDetailPage,
   ClubApplyPage,
   SitemapPage,
 } from './components/Pages';
@@ -324,9 +325,15 @@ const HomePage = ({ navigate }: HomePageProps) => {
 function parseInitialHash(): { page: string; postId: string | null } {
   try {
     const hash = window.location.hash.replace(/^#\/?/, '');
-    if (hash.startsWith('club/')) {
+    // #club/<slug>       → 자율동아리 상세
+    if (hash.startsWith('club/') && !hash.startsWith('club-post/')) {
       const slug = hash.replace('club/', '').trim();
       if (slug) return { page: 'club-detail', postId: slug };
+    }
+    // #club-post/<slug>  → 활동 기록 게시글 상세
+    if (hash.startsWith('club-post/')) {
+      const slug = hash.replace('club-post/', '').trim();
+      if (slug) return { page: 'club-post-detail', postId: slug };
     }
   } catch { /* ignore */ }
   return { page: 'home', postId: null };
@@ -346,9 +353,11 @@ export default function App() {
     setCurrentPage(page);
     setSelectedPostId(postId ?? null);
 
-    // URL 해시 동기화 — club-detail은 slug를 해시에 반영해 공유 가능
+    // URL 해시 동기화 — slug를 해시에 반영해 딥링크 공유 가능
     if (page === 'club-detail' && postId) {
       window.history.replaceState(null, '', `#club/${postId}`);
+    } else if (page === 'club-post-detail' && postId) {
+      window.history.replaceState(null, '', `#club-post/${postId}`);
     } else if (page === 'home') {
       window.history.replaceState(null, '', window.location.pathname);
     } else {
@@ -454,7 +463,23 @@ export default function App() {
         );
 
       case 'clubs-gallery':
-        return <ClubGalleryPage onNavigate={navigate} />;
+        return (
+          <ClubGalleryPage
+            onSelectPost={(id, slug) => navigate('club-post-detail', slug || id)}
+          />
+        );
+
+      case 'club-post-detail':
+        return selectedPostId ? (
+          <ClubPostDetailPage
+            postIdentifier={selectedPostId}
+            onBack={() => navigate('clubs-gallery')}
+          />
+        ) : (
+          <ClubGalleryPage
+            onSelectPost={(id, slug) => navigate('club-post-detail', slug || id)}
+          />
+        );
 
       case 'clubs-apply':
         return <ClubApplyPage onNavigate={navigate} />;

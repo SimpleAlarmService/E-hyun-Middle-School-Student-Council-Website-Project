@@ -89,6 +89,53 @@ export interface ClubDetailResponse {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 동아리 활동 게시글 타입
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/** 동아리 활동 게시글 카드 데이터 (GET /club-posts 응답 results 아이템) */
+export interface ClubPostData {
+  /** Notion 페이지 UUID */
+  id: string;
+  /** 게시글 제목 */
+  title: string;
+  /**
+   * 고유 슬러그 (예: bora-2025-showcase)
+   * — Notion DB 「slug」Text 속성에 입력
+   * — URL 딥링크에 사용. 없으면 빈 문자열
+   */
+  slug: string;
+  /** 작성한 동아리 이름 (Select 속성 「동아리명」) */
+  clubName: string;
+  /** 요약 텍스트 (카드 미리보기) */
+  summary: string;
+  /** 표시용 날짜 (예: 2026년 3월 8일) */
+  date: string;
+  /** ISO 날짜 (예: 2026-03-08) */
+  rawDate: string;
+  /** 작성자 */
+  author: string;
+  /** 대표이미지 URL */
+  imageUrl: string;
+  /** 대표이미지 alt 텍스트 */
+  imageAlt: string;
+  /** 공개 여부 (서버에서 이미 필터링, 클라이언트 참조용) */
+  isPublic: boolean;
+}
+
+/** GET /club-posts 응답 */
+export interface ClubPostListResponse {
+  results:    ClubPostData[];
+  hasMore:    boolean;
+  nextCursor: string | null;
+}
+
+/** GET /club-posts/:id  또는  GET /club-posts/by-slug/:slug 응답 */
+export interface ClubPostDetailResponse {
+  post:   ClubPostData;
+  blocks: NotionBlock[];
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Worker 응답 타입
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

@@ -8,27 +8,32 @@
  * 엔드포인트:
  *   GET /posts?category=공지사항&limit=10&cursor=<cursor>
  *   GET /posts/:pageId
- *   GET /clubs                  — 자율동아리 목록 (게시여부=true, 정렬순서→이름 정렬)
- *   GET /clubs/:id              — 동아리 단건 상세 (속성 + 본문 블록)
- *   GET /clubs/by-slug/:slug    — slug 기반 동아리 상세
+ *   GET /clubs                        — 자율동아리 목록
+ *   GET /clubs/by-slug/:slug          — slug 기반 동아리 상세
+ *   GET /clubs/:id                    — 동아리 단건 상세
+ *   GET /club-posts?limit=N&cursor=X  — 동아리 활동 게시글 목록
+ *   GET /club-posts/by-slug/:slug     — slug 기반 활동 게시글 상세
+ *   GET /club-posts/:id               — 활동 게시글 단건 상세
  *
  * 환경변수 (wrangler secret put):
- *   NOTION_API_KEY            — Notion Integration Token
- *   NOTION_DATABASE_ID        — 학생자치회 게시글 Notion Database ID
- *   NOTION_EHBS_DATABASE_ID   — EHBS 방송부 전용 Database ID (선택)
- *   NOTION_CLUBS_DATABASE_ID  — 대표 동아리 Database ID (선택)
+ *   NOTION_API_KEY                — Notion Integration Token
+ *   NOTION_DATABASE_ID            — 학생자치회 게시글 Notion Database ID
+ *   NOTION_EHBS_DATABASE_ID       — EHBS 방송부 전용 DB (선택)
+ *   NOTION_CLUBS_DATABASE_ID      — 대표 동아리 DB (선택)
+ *   NOTION_CLUB_POSTS_DATABASE_ID — 동아리 활동 기록 DB (선택)
  *
- * 자율동아리 DB 필수 속성:
- *   동아리명(Title) / slug(Text) / 활동분야(Select) / 설명(Text) / 상세설명(Text)
- *   대표이미지(Files) / 활동상태(Select) / 대회참가(Checkbox)
- *   게시여부(Checkbox) / 정렬순서(Number, 선택)
+ * 동아리 활동 DB 필수 속성:
+ *   제목(Title) / 동아리명(Select) / slug(Text) / 요약(Text)
+ *   대표이미지(Files) / 작성일(Date) / 작성자(Text)
+ *   공개여부(Checkbox) / 내용(Page content = Notion 블록)
  */
 
 export interface Env {
   NOTION_API_KEY: string;
   NOTION_DATABASE_ID: string;
-  NOTION_EHBS_DATABASE_ID?: string;  // EHBS 방송부 전용 DB (선택)
-  NOTION_CLUBS_DATABASE_ID?: string; // 대표 동아리 전용 DB (선택)
+  NOTION_EHBS_DATABASE_ID?: string;       // EHBS 방송부 전용 DB (선택)
+  NOTION_CLUBS_DATABASE_ID?: string;      // 대표 동아리 DB (선택)
+  NOTION_CLUB_POSTS_DATABASE_ID?: string; // 동아리 활동 기록 DB (선택)
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -496,6 +501,141 @@ async function handleClubBySlug(env: Env, slug: string): Promise<Response> {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 핸들러 — 동아리 활동 게시글
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/** 동아리 활동 DB 페이지 → ClubPostData */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapClubPost(page: any): Record<string, unknown> {
+  const p = page.properties ?? {};
+
+  const title     = p['제목']?.title?.[0]?.plain_text ?? '';
+  const slug      = (p['slug']?.rich_text ?? [])
+                      .map((r: { plain_text: string }) => r.plain_text)
+                      .join('')
+                      .trim();
+  const clubName  = p['동아리명']?.select?.name
+                 ?? p['동아리명']?.multi_select?.[0]?.name
+                 ?? '';
+  const summary   = (p['요약']?.rich_text ?? [])
+                      .map((r: { plain_text: string }) => r.plain_text)
+                      .join('');
+  const rawDate   = p['작성일']?.date?.start ?? '';
+  const author    = (p['작성자']?.rich_text ?? [])
+                      .map((r: { plain_text: string }) => r.plain_text)
+                      .join('') || '학생자치회';
+
+  // 대표이미지: Files 속성 → 페이지 커버 순서로 탐색
+  const imageUrl  = getFirstFileUrl(p['대표이미지']?.files ?? []) || getPageCoverUrl(page);
+
+  return {
+    id:        page.id,
+    title,
+    slug,
+    clubName,
+    summary,
+    date:      formatKoreanDate(rawDate),
+    rawDate,
+    author,
+    imageUrl,
+    imageAlt:  title,
+    isPublic:  p['공개여부']?.checkbox ?? false,
+  };
+}
+
+/**
+ * GET /club-posts?limit=N&cursor=X
+ * 동아리 활동 DB에서 공개여부=true 게시글 목록 반환 (작성일 내림차순)
+ */
+async function handleClubPosts(env: Env, url: URL): Promise<Response> {
+  if (!env.NOTION_CLUB_POSTS_DATABASE_ID) {
+    return jsonResponse({ error: 'NOTION_CLUB_POSTS_DATABASE_ID not configured' }, 503);
+  }
+
+  const dbId  = await resolveDbId(env, env.NOTION_CLUB_POSTS_DATABASE_ID);
+  const limit = Math.min(Number(url.searchParams.get('limit') ?? 20), 100);
+  const cursor = url.searchParams.get('cursor') ?? undefined;
+
+  const requestBody: Record<string, unknown> = {
+    filter:    { property: '공개여부', checkbox: { equals: true } },
+    sorts:     [{ property: '작성일', direction: 'descending' }],
+    page_size: limit,
+  };
+  if (cursor) requestBody.start_cursor = cursor;
+
+  const data = await notionFetch(
+    env,
+    `/databases/${dbId}/query`,
+    'POST',
+    requestBody,
+  );
+
+  return jsonResponse({
+    results:    (data.results ?? []).map(mapClubPost),
+    hasMore:    data.has_more ?? false,
+    nextCursor: data.next_cursor ?? null,
+  });
+}
+
+/**
+ * GET /club-posts/:id
+ * 동아리 활동 게시글 단건 상세 (속성 + 본문 블록)
+ */
+async function handleClubPostDetail(env: Env, pageId: string): Promise<Response> {
+  const [page, blocksData] = await Promise.all([
+    notionFetch(env, `/pages/${pageId}`),
+    notionFetch(env, `/blocks/${pageId}/children?page_size=100`),
+  ]);
+
+  return jsonResponse({
+    post:   mapClubPost(page),
+    blocks: blocksData.results ?? [],
+  });
+}
+
+/**
+ * GET /club-posts/by-slug/:slug
+ * slug 값으로 동아리 활동 게시글 상세 조회 (URL 공유·딥링크 지원)
+ */
+async function handleClubPostBySlug(env: Env, slug: string): Promise<Response> {
+  if (!env.NOTION_CLUB_POSTS_DATABASE_ID) {
+    return jsonResponse({ error: 'NOTION_CLUB_POSTS_DATABASE_ID not configured' }, 503);
+  }
+
+  const dbId = await resolveDbId(env, env.NOTION_CLUB_POSTS_DATABASE_ID);
+
+  const data = await notionFetch(
+    env,
+    `/databases/${dbId}/query`,
+    'POST',
+    {
+      filter: {
+        and: [
+          { property: '공개여부', checkbox:   { equals: true } },
+          { property: 'slug',     rich_text:  { equals: slug }  },
+        ],
+      },
+      page_size: 1,
+    },
+  );
+
+  const page = data.results?.[0];
+  if (!page) {
+    return jsonResponse({ error: `Club post with slug "${slug}" not found` }, 404);
+  }
+
+  const blocksData = await notionFetch(
+    env,
+    `/blocks/${page.id}/children?page_size=100`,
+  );
+
+  return jsonResponse({
+    post:   mapClubPost(page),
+    blocks: blocksData.results ?? [],
+  });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Worker 진입점
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -545,6 +685,23 @@ export default {
       const clubDetailMatch = path.match(/^\/clubs\/([^/]+)$/);
       if (clubDetailMatch) {
         return await handleClubDetail(env, clubDetailMatch[1]);
+      }
+
+      // GET /club-posts  — 동아리 활동 게시글 목록
+      if (path === '/club-posts') {
+        return await handleClubPosts(env, url);
+      }
+
+      // GET /club-posts/by-slug/:slug  — slug 기반 활동 게시글 상세 (반드시 /:id 보다 먼저)
+      const clubPostSlugMatch = path.match(/^\/club-posts\/by-slug\/([^/]+)$/);
+      if (clubPostSlugMatch) {
+        return await handleClubPostBySlug(env, decodeURIComponent(clubPostSlugMatch[1]));
+      }
+
+      // GET /club-posts/:id  — 활동 게시글 단건 상세
+      const clubPostDetailMatch = path.match(/^\/club-posts\/([^/]+)$/);
+      if (clubPostDetailMatch) {
+        return await handleClubPostDetail(env, clubPostDetailMatch[1]);
       }
 
       return jsonResponse({ error: 'Not Found' }, 404);

@@ -41,9 +41,9 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { CATEGORIES } from '../lib/config';
-import { usePosts, usePost, useClubs, useClubUnified } from '../hooks/useNotion';
+import { usePosts, usePost, useClubs, useClubUnified, useClubPosts, useClubPostUnified } from '../hooks/useNotion';
 import { deriveEventStatus, mapEventStatus } from '../lib/api';
-import type { PostCardData, NotionBlock, NotionRichText, ClubData } from '../types/notion';
+import type { PostCardData, NotionBlock, NotionRichText, ClubData, ClubPostData } from '../types/notion';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 공통 UI (로딩 / 에러 / 빈 상태)
@@ -1445,77 +1445,282 @@ export const ClubIntroPage = ({
 );
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ClubGalleryPage — 활동 기록 갤러리
+// ClubGalleryPage — 동아리 활동 기록 게시판
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-export const ClubGalleryPage = ({
-  onNavigate,
+/** 활동 기록 게시글 카드 */
+const ClubPostCard = ({
+  post,
+  onSelect,
 }: {
-  onNavigate: (page: string) => void;
+  post:     ClubPostData;
+  onSelect: (id: string, slug: string) => void;
+}) => (
+  <div
+    className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-lg hover:border-blue-200 transition-all cursor-pointer group flex flex-col"
+    onClick={() => onSelect(post.id, post.slug)}
+    role="button"
+    tabIndex={0}
+    aria-label={`${post.title} 읽기`}
+    onKeyDown={(e) => e.key === 'Enter' && onSelect(post.id, post.slug)}
+  >
+    {/* 대표이미지 */}
+    <div className="h-44 bg-slate-100 relative overflow-hidden shrink-0">
+      {post.imageUrl ? (
+        <img
+          src={post.imageUrl}
+          alt={post.imageAlt || post.title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          loading="lazy"
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
+          <FileText size={36} className="text-slate-300" />
+        </div>
+      )}
+      {/* 동아리명 배지 */}
+      {post.clubName && (
+        <span className="absolute top-3 left-3 text-xs font-semibold px-2.5 py-1 rounded-full border bg-white/90 text-slate-700 border-slate-200 backdrop-blur-sm">
+          {post.clubName}
+        </span>
+      )}
+    </div>
+
+    {/* 텍스트 */}
+    <div className="p-4 flex flex-col flex-1">
+      <h3 className="font-bold text-sm text-slate-900 mb-1.5 line-clamp-2 group-hover:text-blue-700 transition-colors leading-snug">
+        {post.title}
+      </h3>
+      {post.summary && (
+        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-2 flex-1">
+          {post.summary}
+        </p>
+      )}
+      <div className="flex items-center gap-2 text-xs text-slate-400 mt-auto pt-2 border-t border-slate-50">
+        <Calendar size={11} />
+        <span>{post.date}</span>
+        {post.author && post.author !== '학생자치회' && (
+          <>
+            <span>·</span>
+            <span>{post.author}</span>
+          </>
+        )}
+      </div>
+    </div>
+  </div>
+);
+
+export const ClubGalleryPage = ({
+  onSelectPost,
+}: {
+  onSelectPost: (id: string, slug: string) => void;
 }) => {
-  const { data: posts, isLoading, error } = usePosts({
-    categories: [CATEGORIES.gallery, CATEGORIES.sportsDay, CATEGORIES.events],
-    perPage:    24,
-  });
+  const { data: posts, isLoading, error } = useClubPosts({ limit: 50 });
+  const [activeClub, setActiveClub] = useState('전체');
+
+  // 동아리명 필터 탭 (동적으로 DB에서 추출)
+  const clubs = ['전체', ...Array.from(new Set(posts.map((p) => p.clubName).filter(Boolean)))];
+  const filtered = activeClub === '전체' ? posts : posts.filter((p) => p.clubName === activeClub);
 
   return (
     <div className="pb-12">
       <PageHeader
         title="활동 기록"
-        subtitle="자율동아리의 다양한 활동 순간들을 소개합니다."
+        subtitle="자율동아리의 다양한 활동과 프로젝트 기록을 공유합니다."
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* 안내 */}
-        <div className="mb-8 p-4 bg-amber-50 border border-amber-100 rounded-xl flex gap-3 items-start">
-          <Star size={18} className="text-amber-500 mt-0.5 shrink-0" />
-          <p className="text-sm text-amber-800 leading-relaxed">
-            스포츠라이트·행사 게시판에 등록된 최근 활동 기록을 보여줍니다.
-            더 많은 활동 기록은 <button className="underline font-medium" onClick={() => onNavigate('events')}>학생회 행사</button> 페이지에서 확인하세요.
+        {/* 안내 문구 */}
+        <div className="mb-8 p-5 bg-blue-50 border border-blue-100 rounded-xl flex gap-3 items-start">
+          <BookOpen size={18} className="text-blue-500 mt-0.5 shrink-0" />
+          <p className="text-sm text-blue-800 leading-relaxed">
+            이 페이지는 이현중학교 자율동아리의 활동 기록을 공유하는 공간입니다.
+            각 동아리의 다양한 활동과 프로젝트 진행 과정을 확인할 수 있습니다.
           </p>
         </div>
 
-        {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="aspect-square bg-slate-200 rounded-xl animate-pulse" />
+        {/* 동아리별 필터 탭 (데이터 로드 후) */}
+        {!isLoading && !error && clubs.length > 1 && (
+          <div className="flex flex-wrap gap-2 mb-8">
+            {clubs.map((club) => (
+              <button
+                key={club}
+                onClick={() => setActiveClub(club)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  activeClub === club
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600'
+                }`}
+              >
+                {club}
+              </button>
             ))}
           </div>
-        ) : error ? (
-          <ErrorState message={error} />
-        ) : posts.length === 0 ? (
-          <EmptyState message="등록된 활동 기록이 없습니다." />
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {posts.map((post) => (
-              <div
-                key={post.id}
-                className="relative aspect-square rounded-xl overflow-hidden bg-slate-100 group cursor-pointer shadow-sm hover:shadow-lg transition-shadow"
-                onClick={() => onNavigate('events')}
-                role="button"
-                tabIndex={0}
-                aria-label={post.title}
-                onKeyDown={(e) => e.key === 'Enter' && onNavigate('events')}
-              >
-                {post.imageUrl ? (
-                  <img
-                    src={post.imageUrl}
-                    alt={post.imageAlt || post.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
-                    <ImageIcon size={32} className="text-slate-300" />
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
-                  <p className="text-white text-xs font-medium line-clamp-2">{post.title}</p>
+        )}
+
+        {/* 게시글 그리드 */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-pulse">
+                <div className="h-44 bg-slate-200" />
+                <div className="p-4 space-y-2">
+                  <div className="h-4 bg-slate-200 rounded w-3/4" />
+                  <div className="h-3 bg-slate-100 rounded w-full" />
+                  <div className="h-3 bg-slate-100 rounded w-2/3" />
                 </div>
               </div>
             ))}
           </div>
+        ) : error ? (
+          <ErrorState message={error} />
+        ) : filtered.length === 0 ? (
+          <EmptyState message="등록된 활동 기록이 없습니다." />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {filtered.map((post) => (
+              <ClubPostCard
+                key={post.id}
+                post={post}
+                onSelect={onSelectPost}
+              />
+            ))}
+          </div>
         )}
+      </div>
+    </div>
+  );
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ClubPostDetailPage — 동아리 활동 게시글 상세
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const ClubPostDetailPage = ({
+  postIdentifier,
+  onBack,
+}: {
+  /**
+   * Notion 페이지 ID 또는 slug.
+   * UUID 패턴이면 ID로, 아니면 slug로 자동 조회합니다.
+   */
+  postIdentifier: string;
+  onBack: () => void;
+}) => {
+  const { detail, isLoading, error } = useClubPostUnified(postIdentifier);
+
+  if (isLoading) {
+    return (
+      <div className="pb-12">
+        <div className="bg-white border-b border-slate-200 py-12 mb-8 animate-pulse">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3">
+            <div className="h-5 bg-slate-200 rounded w-1/4" />
+            <div className="h-8 bg-slate-200 rounded w-2/3" />
+            <div className="h-4 bg-slate-100 rounded w-1/3" />
+          </div>
+        </div>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3">
+          {[...Array(6)].map((_, i) => <div key={i} className="h-4 bg-slate-100 rounded" />)}
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !detail) {
+    return (
+      <div className="pb-12">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
+          <button onClick={onBack} className="flex items-center gap-2 text-sm text-slate-500 hover:text-blue-600 mb-8 transition-colors">
+            <ArrowLeft size={16} /> 활동 기록 목록으로
+          </button>
+          <ErrorState message={error ?? '존재하지 않는 활동 기록입니다.'} />
+        </div>
+      </div>
+    );
+  }
+
+  const { post, blocks } = detail;
+
+  return (
+    <div className="pb-12">
+      {/* 헤더 */}
+      <div className="bg-white border-b border-slate-200 py-10 mb-8">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-sm text-slate-500 hover:text-blue-600 mb-6 transition-colors"
+          >
+            <ArrowLeft size={16} /> 활동 기록 목록으로
+          </button>
+
+          {/* 동아리명 배지 */}
+          {post.clubName && (
+            <div className="mb-3">
+              <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700 border border-blue-200">
+                {post.clubName}
+              </span>
+            </div>
+          )}
+
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-3 leading-snug">
+            {post.title}
+          </h1>
+
+          {/* 메타 정보 */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
+            {post.date && (
+              <span className="flex items-center gap-1.5">
+                <Calendar size={13} /> {post.date}
+              </span>
+            )}
+            {post.author && (
+              <span className="flex items-center gap-1.5">
+                <Users size={13} /> {post.author}
+              </span>
+            )}
+            {post.slug && (
+              <span className="font-mono text-xs text-slate-300">/{post.slug}</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        {/* 대표이미지 */}
+        {post.imageUrl && (
+          <figure>
+            <img
+              src={post.imageUrl}
+              alt={post.imageAlt || post.title}
+              className="w-full rounded-xl border border-slate-200 shadow-sm"
+              loading="eager"
+            />
+          </figure>
+        )}
+
+        {/* 요약 */}
+        {post.summary && (
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-5">
+            <p className="text-blue-800 leading-relaxed font-medium whitespace-pre-line">
+              {post.summary}
+            </p>
+          </div>
+        )}
+
+        {/* Notion 본문 블록 */}
+        <article className="prose prose-slate max-w-none prose-headings:font-bold prose-a:text-blue-600 prose-img:rounded-lg">
+          <NotionBlockRenderer blocks={blocks} hideEmptyMessage={!!post.summary} />
+        </article>
+
+        {/* 돌아가기 */}
+        <div className="pt-6 border-t border-slate-200">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-700 transition-colors"
+          >
+            <ChevronLeft size={16} /> 활동 기록 목록으로
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -14,7 +14,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { fetchPosts, fetchPost, fetchClubs, fetchClub, fetchClubBySlug } from '../lib/api';
+import { fetchPosts, fetchPost, fetchClubs, fetchClub, fetchClubBySlug, fetchClubPosts, fetchClubPost, fetchClubPostBySlug } from '../lib/api';
 import {
   CATEGORIES,
   HOME_NOTICES_COUNT,
@@ -23,7 +23,11 @@ import {
   HOME_ARCHIVE_COUNT,
   DEFAULT_PER_PAGE,
 } from '../lib/config';
-import type { PostCardData, PostDetailResponse, ClubData, ClubDetailResponse } from '../types/notion';
+import type {
+  PostCardData, PostDetailResponse,
+  ClubData, ClubDetailResponse,
+  ClubPostData, ClubPostDetailResponse,
+} from '../types/notion';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // usePosts — 게시글 목록
@@ -285,6 +289,131 @@ export function useClubUnified(identifier: string | null): UseClubReturn {
   // 두 훅 모두 항상 호출 (Rules of Hooks 준수), 한쪽엔 null을 넘겨 비활성화
   const byId   = useClub(isId  ? identifier : null);
   const bySlug = useClubBySlug(!isId ? identifier : null);
+
+  return isId ? byId : bySlug;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// useClubPosts — 동아리 활동 게시글
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+interface UseClubPostsReturn {
+  data:      ClubPostData[];
+  isLoading: boolean;
+  error:     string | null;
+}
+
+/** 동아리 활동 게시글 목록 */
+export function useClubPosts(params: { limit?: number } = {}): UseClubPostsReturn {
+  const [data,      setData]    = useState<ClubPostData[]>([]);
+  const [isLoading, setLoading] = useState(true);
+  const [error,     setError]   = useState<string | null>(null);
+
+  useEffect(() => {
+    setData([]);
+    setLoading(true);
+    setError(null);
+
+    const controller = new AbortController();
+
+    fetchClubPosts({ limit: params.limit }, controller.signal)
+      .then((res) => setData(res.results))
+      .catch((err: Error) => {
+        if (err.name === 'AbortError') return;
+        console.warn('[useNotion/useClubPosts]', err);
+        setError('활동 기록을 불러올 수 없습니다.');
+      })
+      .finally(() => setLoading(false));
+
+    return () => controller.abort();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.limit]);
+
+  return { data, isLoading, error };
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// useClubPostUnified — slug 또는 ID 자동 판별
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+interface UseClubPostReturn {
+  detail:    ClubPostDetailResponse | null;
+  isLoading: boolean;
+  error:     string | null;
+}
+
+/** 동아리 활동 게시글 단건 (Notion 페이지 ID 기반) */
+function useClubPostById(id: string | null): UseClubPostReturn {
+  const [detail,    setDetail]  = useState<ClubPostDetailResponse | null>(null);
+  const [isLoading, setLoading] = useState(false);
+  const [error,     setError]   = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id) { setDetail(null); return; }
+
+    setDetail(null);
+    setLoading(true);
+    setError(null);
+
+    const controller = new AbortController();
+
+    fetchClubPost(id, controller.signal)
+      .then(setDetail)
+      .catch((err: Error) => {
+        if (err.name === 'AbortError') return;
+        console.warn('[useNotion/useClubPostById]', err);
+        setError('활동 기록을 불러올 수 없습니다.');
+      })
+      .finally(() => setLoading(false));
+
+    return () => controller.abort();
+  }, [id]);
+
+  return { detail, isLoading, error };
+}
+
+/** 동아리 활동 게시글 단건 (slug 기반) */
+function useClubPostBySlug(slug: string | null): UseClubPostReturn {
+  const [detail,    setDetail]  = useState<ClubPostDetailResponse | null>(null);
+  const [isLoading, setLoading] = useState(false);
+  const [error,     setError]   = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!slug) { setDetail(null); return; }
+
+    setDetail(null);
+    setLoading(true);
+    setError(null);
+
+    const controller = new AbortController();
+
+    fetchClubPostBySlug(slug, controller.signal)
+      .then(setDetail)
+      .catch((err: Error) => {
+        if (err.name === 'AbortError') return;
+        console.warn('[useNotion/useClubPostBySlug]', err);
+        setError('활동 기록을 불러올 수 없습니다.');
+      })
+      .finally(() => setLoading(false));
+
+    return () => controller.abort();
+  }, [slug]);
+
+  return { detail, isLoading, error };
+}
+
+/**
+ * 동아리 활동 게시글 단건 — identifier가 UUID면 ID 조회, 아니면 slug 조회
+ *
+ * 사용 예:
+ *   useClubPostUnified('bora-2025-showcase')  → slug 조회
+ *   useClubPostUnified('abc123...')           → ID 조회 (하위 호환)
+ */
+export function useClubPostUnified(identifier: string | null): UseClubPostReturn {
+  const isId = identifier ? isNotionId(identifier) : true;
+
+  const byId   = useClubPostById(!isId ? null : identifier);
+  const bySlug = useClubPostBySlug(isId ? null : identifier);
 
   return isId ? byId : bySlug;
 }
