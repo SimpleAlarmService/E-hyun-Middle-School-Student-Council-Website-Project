@@ -28,11 +28,14 @@ import {
   Tag,
   Play,
   Radio,
+  Trophy,
+  Star,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { CATEGORIES } from '../lib/config';
-import { usePosts, usePost } from '../hooks/useNotion';
+import { usePosts, usePost, useClubs, useClub } from '../hooks/useNotion';
 import { deriveEventStatus, mapEventStatus } from '../lib/api';
-import type { PostCardData, NotionBlock, NotionRichText } from '../types/notion';
+import type { PostCardData, NotionBlock, NotionRichText, ClubData } from '../types/notion';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 공통 UI (로딩 / 에러 / 빈 상태)
@@ -1024,13 +1027,293 @@ export const EHBSPage = ({
   );
 };
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ClubsPage — 학교 대표 활동 (동아리 목록)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/** 활동분야별 배지 색상 */
+const FIELD_COLORS: Record<string, string> = {
+  공연: 'bg-purple-50 text-purple-700 border-purple-200',
+  체육: 'bg-green-50  text-green-700  border-green-200',
+  학술: 'bg-blue-50   text-blue-700   border-blue-200',
+  예술: 'bg-rose-50   text-rose-700   border-rose-200',
+  기타: 'bg-slate-50  text-slate-600  border-slate-200',
+};
+
+function fieldBadgeClass(field: string) {
+  return FIELD_COLORS[field] ?? FIELD_COLORS['기타'];
+}
+
+/** 동아리 카드 */
+const ClubCard = ({
+  club,
+  onSelect,
+}: {
+  club:     ClubData;
+  onSelect: (id: string) => void;
+}) => (
+  <div
+    className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-lg hover:border-blue-200 transition-all cursor-pointer group"
+    onClick={() => onSelect(club.id)}
+    role="button"
+    tabIndex={0}
+    aria-label={`${club.name} 상세 보기`}
+    onKeyDown={(e) => e.key === 'Enter' && onSelect(club.id)}
+  >
+    {/* 대표이미지 */}
+    <div className="h-44 bg-slate-100 relative overflow-hidden">
+      {club.imageUrl ? (
+        <img
+          src={club.imageUrl}
+          alt={club.imageAlt || club.name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          loading="lazy"
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
+          <ImageIcon size={40} className="text-slate-300" />
+        </div>
+      )}
+      {/* 활동분야 배지 */}
+      {club.field && (
+        <span className={`absolute top-3 left-3 text-xs font-semibold px-2.5 py-1 rounded-full border ${fieldBadgeClass(club.field)}`}>
+          {club.field}
+        </span>
+      )}
+      {/* 대회참가 아이콘 */}
+      {club.hasCompetition && (
+        <span className="absolute top-3 right-3 w-7 h-7 rounded-full bg-amber-400 flex items-center justify-center shadow">
+          <Trophy size={13} className="text-white" />
+        </span>
+      )}
+    </div>
+
+    {/* 텍스트 정보 */}
+    <div className="p-4">
+      <h3 className="font-bold text-base text-slate-900 mb-1.5 group-hover:text-blue-700 transition-colors">
+        {club.name}
+      </h3>
+      {club.description && (
+        <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed">
+          {club.description}
+        </p>
+      )}
+    </div>
+  </div>
+);
+
+/** 활동분야 필터 탭 */
+const FIELD_ALL = '전체';
+
+export const ClubsPage = ({
+  onSelectClub,
+}: {
+  onSelectClub: (id: string) => void;
+}) => {
+  const { data: clubs, isLoading, error } = useClubs();
+  const [activeField, setActiveField] = useState(FIELD_ALL);
+
+  // 활동분야 목록 (동적으로 DB에서 추출)
+  const fields = [FIELD_ALL, ...Array.from(new Set(clubs.map((c) => c.field).filter(Boolean)))];
+
+  const filtered = activeField === FIELD_ALL
+    ? clubs
+    : clubs.filter((c) => c.field === activeField);
+
+  return (
+    <div className="pb-12">
+      <PageHeader
+        title="학교 대표 활동"
+        subtitle="학교를 빛내는 대표 동아리들을 소개합니다."
+      />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* 안내 문구 */}
+        <div className="mb-8 p-4 bg-blue-50 border border-blue-100 rounded-xl flex gap-3 items-start">
+          <Star size={18} className="text-blue-500 mt-0.5 shrink-0" />
+          <p className="text-sm text-blue-700 leading-relaxed">
+            이현중학교 학생 중 학교를 대표하여 대회, 공연, 행사 등에 참여하는
+            팀들의 활동을 소개하는 공간입니다.
+          </p>
+        </div>
+
+        {/* 활동분야 필터 (데이터 로드 후 표시) */}
+        {!isLoading && !error && fields.length > 1 && (
+          <div className="flex flex-wrap gap-2 mb-8">
+            {fields.map((f) => (
+              <button
+                key={f}
+                onClick={() => setActiveField(f)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  activeField === f
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600'
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* 동아리 그리드 */}
+        {isLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-pulse">
+                <div className="h-44 bg-slate-200" />
+                <div className="p-4 space-y-2">
+                  <div className="h-4 bg-slate-200 rounded w-2/3" />
+                  <div className="h-3 bg-slate-100 rounded w-full" />
+                  <div className="h-3 bg-slate-100 rounded w-4/5" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <ErrorState message={error} />
+        ) : filtered.length === 0 ? (
+          <EmptyState message="등록된 동아리가 없습니다." />
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {filtered.map((club) => (
+              <ClubCard key={club.id} club={club} onSelect={onSelectClub} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ClubDetailPage — 동아리 상세
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export const ClubDetailPage = ({
+  clubId,
+  onBack,
+}: {
+  clubId: string;
+  onBack: () => void;
+}) => {
+  const { detail, isLoading, error } = useClub(clubId);
+
+  if (isLoading) {
+    return (
+      <div className="pb-12">
+        <div className="bg-white border-b border-slate-200 py-12 mb-8 animate-pulse">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3">
+            <div className="h-6 bg-slate-200 rounded w-1/4" />
+            <div className="h-8 bg-slate-200 rounded w-1/2" />
+          </div>
+        </div>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3">
+          {[...Array(5)].map((_, i) => <div key={i} className="h-4 bg-slate-100 rounded" />)}
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !detail) {
+    return (
+      <div className="pb-12">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
+          <button onClick={onBack} className="flex items-center gap-2 text-sm text-slate-500 hover:text-blue-600 mb-8">
+            <ArrowLeft size={16} /> 목록으로
+          </button>
+          <ErrorState message={error ?? '동아리 정보를 찾을 수 없습니다.'} />
+        </div>
+      </div>
+    );
+  }
+
+  const { club, blocks } = detail;
+
+  return (
+    <div className="pb-12">
+      {/* 헤더 */}
+      <div className="bg-white border-b border-slate-200 py-10 mb-8">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-sm text-slate-500 hover:text-blue-600 mb-6 transition-colors"
+          >
+            <ArrowLeft size={16} /> 목록으로
+          </button>
+
+          {/* 활동분야 배지 */}
+          <div className="flex flex-wrap gap-2 mb-3">
+            {club.field && (
+              <span className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border font-medium ${fieldBadgeClass(club.field)}`}>
+                <Tag size={10} /> {club.field}
+              </span>
+            )}
+            {club.hasCompetition && (
+              <span className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-medium">
+                <Trophy size={10} /> 대회 참가
+              </span>
+            )}
+          </div>
+
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
+            {club.name}
+          </h1>
+          {club.status && (
+            <p className="text-sm text-slate-400">{club.status}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        {/* 대표이미지 */}
+        {club.imageUrl && (
+          <figure>
+            <img
+              src={club.imageUrl}
+              alt={club.imageAlt || club.name}
+              className="w-full rounded-xl border border-slate-200 shadow-sm"
+              loading="eager"
+            />
+          </figure>
+        )}
+
+        {/* 설명 */}
+        {club.description && (
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
+            <p className="text-slate-700 leading-relaxed whitespace-pre-line">
+              {club.description}
+            </p>
+          </div>
+        )}
+
+        {/* Notion 본문 블록 */}
+        <article className="prose prose-slate max-w-none prose-headings:font-bold prose-a:text-blue-600 prose-img:rounded-lg">
+          <NotionBlockRenderer blocks={blocks} hideEmptyMessage={!!club.description} />
+        </article>
+
+        {/* 목록으로 */}
+        <div className="pt-6 border-t border-slate-200">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-700 transition-colors"
+          >
+            <ChevronLeft size={16} /> 목록으로
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const SitemapPage = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
   const sitemapData = [
-    { title: '학생자치회', id: 'intro',        items: ['학생회 소개', '부서 소개'] },
-    { title: '공지사항',   id: 'notices',       items: [] },
-    { title: '학생참여',   id: 'participation', items: ['건의함', '행사 제안'] },
-    { title: '학생회 행사',id: 'events',        items: ['스포츠라이트', '행사 안내', '체육대회/이현제'] },
-    { title: '자료실',     id: 'archive',       items: ['회의록', '기타자료실'] },
+    { title: '학생자치회',    id: 'intro',        items: ['학생회 소개', '부서 소개'] },
+    { title: '공지사항',      id: 'notices',       items: [] },
+    { title: '학생참여',      id: 'participation', items: ['건의함', '행사 제안'] },
+    { title: '학생회 행사',   id: 'events',        items: ['스포츠라이트', '행사 안내', '체육대회/이현제'] },
+    { title: '자료실',        id: 'archive',       items: ['회의록', '기타자료실'] },
+    { title: '학교 대표 활동', id: 'clubs',        items: ['대표 동아리 목록'] },
   ];
 
   return (

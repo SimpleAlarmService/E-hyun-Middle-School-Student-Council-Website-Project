@@ -66,3 +66,6 @@ export const HOME_GALLERY_COUNT = 4;
 
 /** 메인 홈 자료실 미리보기 최대 수 */
 export const HOME_ARCHIVE_COUNT = 4;
+
+/** 대표 동아리 목록 최대 표시 수 */
+export const CLUBS_MAX_COUNT = 100;

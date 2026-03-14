@@ -14,7 +14,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { fetchPosts, fetchPost } from '../lib/api';
+import { fetchPosts, fetchPost, fetchClubs, fetchClub } from '../lib/api';
 import {
   CATEGORIES,
   HOME_NOTICES_COUNT,
@@ -23,7 +23,7 @@ import {
   HOME_ARCHIVE_COUNT,
   DEFAULT_PER_PAGE,
 } from '../lib/config';
-import type { PostCardData, PostDetailResponse } from '../types/notion';
+import type { PostCardData, PostDetailResponse, ClubData, ClubDetailResponse } from '../types/notion';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // usePosts — 게시글 목록
@@ -157,4 +157,77 @@ export function useHomeArchive(): UsePostsReturn {
     categories: [CATEGORIES.minutes, CATEGORIES.resourcesEtc],
     perPage: HOME_ARCHIVE_COUNT,
   });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 대표 동아리 훅
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export interface UseClubsReturn {
+  data:      ClubData[];
+  isLoading: boolean;
+  error:     string | null;
+}
+
+/** 대표 동아리 목록 (게시여부=true 전체) */
+export function useClubs(): UseClubsReturn {
+  const [data,      setData]    = useState<ClubData[]>([]);
+  const [isLoading, setLoading] = useState(true);
+  const [error,     setError]   = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setData([]);
+    setLoading(true);
+    setError(null);
+
+    fetchClubs(controller.signal)
+      .then((res) => setData(res.results))
+      .catch((err: Error) => {
+        if (err.name === 'AbortError') return;
+        console.warn('[useNotion/useClubs]', err);
+        setError('동아리 정보를 불러올 수 없습니다.');
+      })
+      .finally(() => setLoading(false));
+
+    return () => controller.abort();
+  }, []);
+
+  return { data, isLoading, error };
+}
+
+export interface UseClubReturn {
+  detail:    ClubDetailResponse | null;
+  isLoading: boolean;
+  error:     string | null;
+}
+
+/** 동아리 단건 상세 */
+export function useClub(id: string | null): UseClubReturn {
+  const [detail,    setDetail]  = useState<ClubDetailResponse | null>(null);
+  const [isLoading, setLoading] = useState(false);
+  const [error,     setError]   = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id) { setDetail(null); return; }
+
+    setDetail(null);
+    setLoading(true);
+    setError(null);
+
+    const controller = new AbortController();
+
+    fetchClub(id, controller.signal)
+      .then(setDetail)
+      .catch((err: Error) => {
+        if (err.name === 'AbortError') return;
+        console.warn('[useNotion/useClub]', err);
+        setError('동아리 정보를 불러올 수 없습니다.');
+      })
+      .finally(() => setLoading(false));
+
+    return () => controller.abort();
+  }, [id]);
+
+  return { detail, isLoading, error };
 }

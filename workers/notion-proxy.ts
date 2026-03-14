@@ -13,6 +13,7 @@
  *   NOTION_API_KEY            — Notion Integration Token
  *   NOTION_DATABASE_ID        — 학생자치회 게시글 Notion Database ID
  *   NOTION_EHBS_DATABASE_ID   — EHBS 방송부 전용 Database ID (선택)
+ *   NOTION_CLUBS_DATABASE_ID  — 대표 동아리 Database ID (선택)
  *
  * Notion DB 속성:
  *   제목(Title) / 카테고리(Select) / 작성일(Date) / 공개(Checkbox) / 요약(Rich Text) / 대표이미지(Files)
@@ -21,7 +22,8 @@
 export interface Env {
   NOTION_API_KEY: string;
   NOTION_DATABASE_ID: string;
-  NOTION_EHBS_DATABASE_ID?: string; // EHBS 방송부 전용 DB (선택)
+  NOTION_EHBS_DATABASE_ID?: string;  // EHBS 방송부 전용 DB (선택)
+  NOTION_CLUBS_DATABASE_ID?: string; // 대표 동아리 전용 DB (선택)
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -347,6 +349,83 @@ async function handleDetail(env: Env, pageId: string): Promise<Response> {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 핸들러 — 대표 동아리 목록
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/** 대표 활동 DB 페이지 → ClubData */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapClub(page: any): Record<string, unknown> {
+  const p = page.properties ?? {};
+
+  const name           = p['동아리명']?.title?.[0]?.plain_text ?? '';
+  const field          = p['활동분야']?.select?.name ?? '';
+  const description    = (p['설명']?.rich_text ?? [])
+                           .map((r: { plain_text: string }) => r.plain_text)
+                           .join('');
+  const status         = p['활동상태']?.select?.name ?? '';
+  const hasCompetition = p['대회참가']?.checkbox ?? false;
+
+  // 대표이미지: Files 속성 → 페이지 커버 순서로 탐색
+  const imageUrl = getFirstFileUrl(p['대표이미지']?.files ?? []) || getPageCoverUrl(page);
+
+  return {
+    id:             page.id,
+    name,
+    field,
+    description,
+    status,
+    hasCompetition,
+    imageUrl,
+    imageAlt:       name,
+  };
+}
+
+/**
+ * GET /clubs
+ * 대표 활동 DB에서 게시여부=true 인 동아리 목록 반환
+ */
+async function handleClubs(env: Env): Promise<Response> {
+  if (!env.NOTION_CLUBS_DATABASE_ID) {
+    return jsonResponse({ error: 'NOTION_CLUBS_DATABASE_ID not configured' }, 503);
+  }
+
+  const dbId = await resolveDbId(env, env.NOTION_CLUBS_DATABASE_ID);
+
+  const data = await notionFetch(
+    env,
+    `/databases/${dbId}/query`,
+    'POST',
+    {
+      filter:    { property: '게시여부', checkbox: { equals: true } },
+      sorts:     [{ property: '동아리명', direction: 'ascending' }],
+      page_size: 100,
+    },
+  );
+
+  return jsonResponse({
+    results:    (data.results ?? []).map(mapClub),
+    hasMore:    false,
+    nextCursor: null,
+  });
+}
+
+/**
+ * GET /clubs/:id
+ * 동아리 단건 상세 (속성 + 본문 블록)
+ */
+async function handleClubDetail(env: Env, pageId: string): Promise<Response> {
+  const [page, blocksData] = await Promise.all([
+    notionFetch(env, `/pages/${pageId}`),
+    notionFetch(env, `/blocks/${pageId}/children?page_size=100`),
+  ]);
+
+  return jsonResponse({
+    club:   mapClub(page),
+    blocks: blocksData.results ?? [],
+  });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Worker 진입점
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -379,6 +458,17 @@ export default {
       const detailMatch = path.match(/^\/posts\/([^/]+)$/);
       if (detailMatch) {
         return await handleDetail(env, detailMatch[1]);
+      }
+
+      // GET /clubs  — 대표 동아리 목록
+      if (path === '/clubs') {
+        return await handleClubs(env);
+      }
+
+      // GET /clubs/:id  — 동아리 상세
+      const clubDetailMatch = path.match(/^\/clubs\/([^/]+)$/);
+      if (clubDetailMatch) {
+        return await handleClubDetail(env, clubDetailMatch[1]);
       }
 
       return jsonResponse({ error: 'Not Found' }, 404);

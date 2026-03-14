@@ -7,7 +7,7 @@
  */
 
 import { WORKER_BASE_URL } from './config';
-import type { PostListResponse, PostDetailResponse } from '../types/notion';
+import type { PostListResponse, PostDetailResponse, ClubListResponse, ClubDetailResponse } from '../types/notion';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 이미지 URL 유틸
@@ -74,6 +74,28 @@ export async function fetchPost(id: string, signal?: AbortSignal): Promise<PostD
   return {
     ...json,
     post: { ...json.post, imageUrl: notionImageUrl(json.post.imageUrl) },
+  };
+}
+
+/** 대표 동아리 목록 조회 */
+export async function fetchClubs(signal?: AbortSignal): Promise<ClubListResponse> {
+  const res = await fetch(`${WORKER_BASE_URL}/clubs`, { signal });
+  if (!res.ok) throw new Error(`Worker ${res.status}`);
+  const json = await res.json() as ClubListResponse;
+  return {
+    ...json,
+    results: json.results.map((club) => ({ ...club, imageUrl: notionImageUrl(club.imageUrl) })),
+  };
+}
+
+/** 동아리 단건 상세 조회 */
+export async function fetchClub(id: string, signal?: AbortSignal): Promise<ClubDetailResponse> {
+  const res = await fetch(`${WORKER_BASE_URL}/clubs/${id}`, { signal });
+  if (!res.ok) throw new Error(`Worker ${res.status}`);
+  const json = await res.json() as ClubDetailResponse;
+  return {
+    ...json,
+    club: { ...json.club, imageUrl: notionImageUrl(json.club.imageUrl) },
   };
 }
 

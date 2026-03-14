@@ -42,6 +42,43 @@ export interface PostCardData {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 대표 동아리 타입
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/** 대표 동아리 카드 데이터 (GET /clubs 응답 results 아이템) */
+export interface ClubData {
+  /** Notion 페이지 UUID */
+  id: string;
+  /** 동아리명 */
+  name: string;
+  /** 활동분야 (예: 공연, 체육, 학술, 예술, 기타) */
+  field: string;
+  /** 설명 */
+  description: string;
+  /** 활동상태 (예: 활동중, 휴면) */
+  status: string;
+  /** 대회참가 여부 */
+  hasCompetition: boolean;
+  /** 대표이미지 URL */
+  imageUrl: string;
+  /** 대표이미지 alt */
+  imageAlt: string;
+}
+
+/** GET /clubs 응답 */
+export interface ClubListResponse {
+  results:    ClubData[];
+  hasMore:    boolean;
+  nextCursor: string | null;
+}
+
+/** GET /clubs/:id 응답 */
+export interface ClubDetailResponse {
+  club:   ClubData;
+  blocks: NotionBlock[];
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Worker 응답 타입
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

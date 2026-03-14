@@ -36,6 +36,8 @@ import {
   EventsPage,
   EHBSPage,
   ArchivePage,
+  ClubsPage,
+  ClubDetailPage,
   SitemapPage,
 } from './components/Pages';
 import { useHomeEvents, useHomeArchive } from './hooks/useNotion';
@@ -399,6 +401,23 @@ export default function App() {
 
       case 'archive':
         return <ArchivePage />;
+
+      case 'clubs':
+        return (
+          <ClubsPage
+            onSelectClub={(id) => navigate('club-detail', id)}
+          />
+        );
+
+      case 'club-detail':
+        return selectedPostId ? (
+          <ClubDetailPage
+            clubId={selectedPostId}
+            onBack={() => navigate('clubs')}
+          />
+        ) : (
+          <ClubsPage onSelectClub={(id) => navigate('club-detail', id)} />
+        );
 
       case 'sitemap':
         return <SitemapPage onNavigate={navigate} />;
