@@ -393,6 +393,18 @@ const NoticeCard = ({ post, onSelectPost }: { post: PostCardData; onSelectPost?:
 );
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// YouTube 유틸 (NoticeDetailPage · EHBSCard 공유)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/** YouTube URL에서 비디오 ID 추출 */
+function getYoutubeVideoId(url: string): string | null {
+  const match = url.match(
+    /(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
+  );
+  return match ? match[1] : null;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // NoticeDetailPage — 게시글 상세
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -486,8 +498,24 @@ export const NoticeDetailPage = ({ postId, onBack }: NoticeDetailPageProps) => {
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
 
-        {/* 대표 이미지 — 본문 최상단 첨부 이미지처럼 표시 */}
-        {coverSrc && (
+        {/* YouTube 영상 embed (유튜브 링크가 있는 경우 최상단 표시) */}
+        {post.youtubeUrl && (() => {
+          const yid = getYoutubeVideoId(post.youtubeUrl as string);
+          return yid ? (
+            <div className="rounded-xl overflow-hidden border border-slate-200 shadow-sm" style={{ position: 'relative', paddingTop: '56.25%' }}>
+              <iframe
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+                src={`https://www.youtube.com/embed/${yid}?rel=0`}
+                title={post.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          ) : null;
+        })()}
+
+        {/* 대표 이미지 — YouTube가 없을 때만 표시 */}
+        {!post.youtubeUrl && coverSrc && (
           <figure className="my-2">
             <img
               src={coverSrc}
@@ -878,15 +906,7 @@ export const ArchivePage = () => {
 // EHBSPage — 방송부
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-/** YouTube URL에서 비디오 ID 추출 */
-function getYoutubeVideoId(url: string): string | null {
-  const match = url.match(
-    /(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
-  );
-  return match ? match[1] : null;
-}
-
-/** EHBS 카드 — 썸네일 클릭 시 YouTube 새 탭 열기 */
+/** EHBS 카드 — 클릭 시 상세 페이지로 이동 */
 const EHBSCard = ({
   post,
   onSelectPost,
@@ -901,11 +921,7 @@ const EHBSCard = ({
   const isYoutube = !!youtubeId;
 
   const handleClick = () => {
-    if (isYoutube) {
-      window.open(post.youtubeUrl, '_blank', 'noopener,noreferrer');
-    } else {
-      onSelectPost?.(post.id);
-    }
+    onSelectPost?.(post.id);
   };
 
   return (
@@ -961,7 +977,7 @@ const EHBSCard = ({
         )}
         {isYoutube && (
           <span className="mt-2 inline-flex items-center gap-1 text-xs text-red-500 font-medium">
-            <Play size={10} fill="currentColor" /> YouTube에서 보기
+            <Play size={10} fill="currentColor" /> 영상 보기
           </span>
         )}
       </div>
