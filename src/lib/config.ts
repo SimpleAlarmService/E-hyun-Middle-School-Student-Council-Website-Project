@@ -63,3 +63,6 @@ export const HOME_EVENTS_COUNT = 3;
 
 /** 메인 홈 갤러리 미리보기 최대 수 */
 export const HOME_GALLERY_COUNT = 4;
+
+/** 메인 홈 자료실 미리보기 최대 수 */
+export const HOME_ARCHIVE_COUNT = 4;

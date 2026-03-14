@@ -38,9 +38,9 @@ import {
   ArchivePage,
   SitemapPage,
 } from './components/Pages';
-import { useHomeEvents, useHomeGallery } from './hooks/useNotion';
+import { useHomeEvents, useHomeArchive } from './hooks/useNotion';
 import { deriveEventStatus, mapEventStatus } from './lib/api';
-import { ArrowRight, MessageSquare, ThumbsUp, Users, Calendar, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { ArrowRight, MessageSquare, ThumbsUp, Users, Calendar, FileText, AlertCircle } from 'lucide-react';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 홈 페이지 내부 로딩 / 빈 상태 UI
@@ -57,9 +57,16 @@ const EventCardSkeleton = () => (
   </div>
 );
 
-/** 갤러리 아이템 로딩 스켈레톤 */
-const GalleryItemSkeleton = () => (
-  <div className="aspect-square rounded-lg bg-slate-200 animate-pulse" />
+/** 자료실 아이템 로딩 스켈레톤 */
+const ArchiveItemSkeleton = () => (
+  <div className="bg-white rounded-lg border border-slate-200 p-4 flex gap-3 items-center animate-pulse">
+    <div className="w-10 h-10 rounded-lg bg-slate-200 shrink-0" />
+    <div className="flex-1 space-y-2">
+      <div className="h-3.5 bg-slate-200 rounded w-3/4" />
+      <div className="h-3 bg-slate-100 rounded w-1/3" />
+    </div>
+    <div className="h-5 w-14 bg-slate-100 rounded-full shrink-0" />
+  </div>
 );
 
 /** 홈 섹션 빈 상태 */
@@ -86,12 +93,12 @@ const HomePage = ({ navigate }: HomePageProps) => {
     error:     eventsError,
   } = useHomeEvents();
 
-  // 홈 갤러리 섹션: 'gallery' 카테고리 최신 4건
+  // 홈 자료실 섹션: 회의록 + 기타자료실 최신 4건
   const {
-    data:      galleryItems,
-    isLoading: galleryLoading,
-    error:     galleryError,
-  } = useHomeGallery();
+    data:      archiveItems,
+    isLoading: archiveLoading,
+    error:     archiveError,
+  } = useHomeArchive();
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -243,12 +250,12 @@ const HomePage = ({ navigate }: HomePageProps) => {
       {/* ── 오늘의 급식 ── */}
       <MealCard />
 
-      {/* ── 섹션: 활동 갤러리 ── */}
+      {/* ── 섹션: 자료실 ── */}
       <section className="py-8">
         <div className="flex justify-between items-end mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">활동 갤러리</h2>
-            <p className="text-slate-500 mt-1">학생자치회의 생생한 활동 모습을 만나보세요.</p>
+            <h2 className="text-2xl font-bold text-slate-900">자료실</h2>
+            <p className="text-slate-500 mt-1">회의록과 학생자치회 자료를 확인하세요.</p>
           </div>
           <button
             onClick={() => navigate('archive')}
@@ -258,42 +265,39 @@ const HomePage = ({ navigate }: HomePageProps) => {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {galleryLoading ? (
-            /* 로딩: 스켈레톤 4개 */
-            [...Array(4)].map((_, i) => <GalleryItemSkeleton key={i} />)
-          ) : galleryError || galleryItems.length === 0 ? (
-            /* 에러 또는 데이터 없음 */
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {archiveLoading ? (
+            [...Array(4)].map((_, i) => <ArchiveItemSkeleton key={i} />)
+          ) : archiveError || archiveItems.length === 0 ? (
             <div className="col-span-full flex flex-col items-center justify-center py-12 gap-3 text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-              <ImageIcon size={32} />
-              <p className="text-sm">{galleryError ?? '등록된 갤러리 사진이 없습니다.'}</p>
+              <FileText size={32} />
+              <p className="text-sm">{archiveError ?? '등록된 자료가 없습니다.'}</p>
             </div>
           ) : (
-            /* 실제 갤러리 이미지 */
-            galleryItems.map((item) => (
+            archiveItems.map((item) => (
               <div
                 key={item.id}
-                className="aspect-square rounded-lg overflow-hidden bg-slate-200 cursor-pointer group relative"
+                className="bg-white rounded-lg border border-slate-200 p-4 flex gap-3 items-center cursor-pointer hover:shadow-md hover:border-blue-200 transition-all group"
                 onClick={() => navigate('archive')}
                 role="button"
                 tabIndex={0}
-                aria-label={`갤러리: ${item.title}`}
+                aria-label={`자료실: ${item.title}`}
                 onKeyDown={(e) => e.key === 'Enter' && navigate('archive')}
               >
-                {item.imageUrl ? (
-                  <img
-                    src={item.imageUrl}
-                    alt={item.imageAlt}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    loading="lazy"
-                  />
-                ) : (
-                  /* 대표 이미지 없을 때 placeholder 박스 (디자인 유지) */
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
-                    <ImageIcon size={32} className="text-slate-400" />
-                  </div>
+                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                  <FileText size={18} className="text-blue-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-800 text-sm truncate group-hover:text-blue-700 transition-colors">
+                    {item.title}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5">{item.date}</p>
+                </div>
+                {item.categories[0] && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 shrink-0">
+                    {item.categories[0]}
+                  </span>
                 )}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors" />
               </div>
             ))
           )}

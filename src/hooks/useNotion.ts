@@ -10,6 +10,7 @@
  *   useHomeNotices()      — 홈 공지사항 위젯용 (최신 5건)
  *   useHomeEvents()       — 홈 진행 행사 섹션용 (최신 3건)
  *   useHomeGallery()      — 홈 갤러리 섹션용 (최신 4건)
+ *   useHomeArchive()      — 홈 자료실 섹션용 (최신 4건, 회의록+기타자료실)
  */
 
 import { useState, useEffect } from 'react';
@@ -19,6 +20,7 @@ import {
   HOME_NOTICES_COUNT,
   HOME_EVENTS_COUNT,
   HOME_GALLERY_COUNT,
+  HOME_ARCHIVE_COUNT,
   DEFAULT_PER_PAGE,
 } from '../lib/config';
 import type { PostCardData, PostDetailResponse } from '../types/notion';
@@ -147,4 +149,12 @@ export function useHomeEvents(): UsePostsReturn {
 /** 홈 갤러리 섹션 (스포츠라이트 최신 N건) */
 export function useHomeGallery(): UsePostsReturn {
   return usePosts({ category: CATEGORIES.gallery, perPage: HOME_GALLERY_COUNT });
+}
+
+/** 홈 자료실 섹션 (회의록 + 기타자료실 최신 N건) */
+export function useHomeArchive(): UsePostsReturn {
+  return usePosts({
+    categories: [CATEGORIES.minutes, CATEGORIES.resourcesEtc],
+    perPage: HOME_ARCHIVE_COUNT,
+  });
 }
