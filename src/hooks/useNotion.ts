@@ -14,19 +14,15 @@
  */
 
 import { useState, useEffect } from 'react';
-import { fetchPosts, fetchPost, fetchClubs, fetchClub, fetchClubBySlug, fetchClubPosts, fetchClubPost, fetchClubPostBySlug } from '../lib/api';
+import { fetchPosts, fetchPost, fetchClubs, fetchClub, fetchClubBySlug, fetchClubPosts, fetchClubPost, fetchClubPostBySlug, fetchClubPostsByClub, fetchHomeData } from '../lib/api';
 import {
-  CATEGORIES,
-  HOME_NOTICES_COUNT,
-  HOME_EVENTS_COUNT,
-  HOME_GALLERY_COUNT,
-  HOME_ARCHIVE_COUNT,
   DEFAULT_PER_PAGE,
 } from '../lib/config';
 import type {
   PostCardData, PostDetailResponse,
   ClubData, ClubDetailResponse,
   ClubPostData, ClubPostDetailResponse,
+  HomeDataResponse,
 } from '../types/notion';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -128,39 +124,88 @@ export function usePost(id: string | null): UsePostReturn {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 홈 전용 훅 (고정 카테고리 + 고정 개수)
+// 홈 통합 훅 — /home-data 엔드포인트로 1번 요청
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 /**
- * 홈 공지사항 위젯 — 카테고리 무관 전체 최신글 N건
- * (탭 필터링은 Notices 컴포넌트에서 클라이언트 사이드로 처리)
+ * 모듈 레벨 in-flight 중복 요청 방지
+ * 홈 페이지에서 4개 훅이 동시에 마운트될 때 fetch는 1번만 실행됩니다.
  */
-export function useHomeNotices(): UsePostsReturn {
-  return usePosts({ perPage: HOME_NOTICES_COUNT });
+let _homeDataPromise: Promise<HomeDataResponse> | null = null;
+let _homeDataAt = 0;
+const HOME_DATA_DEDUP_MS = 3_000; // 3초 이내 중복 요청 차단
+
+function fetchHomeDataOnce(): Promise<HomeDataResponse> {
+  const now = Date.now();
+  if (_homeDataPromise && now - _homeDataAt < HOME_DATA_DEDUP_MS) {
+    return _homeDataPromise;
+  }
+  _homeDataAt = now;
+  const p = fetchHomeData();
+  _homeDataPromise = p;
+  p.catch(() => { _homeDataPromise = null; }); // 오류 시 캐시 비움
+  return p;
+}
+
+export interface UseHomeDataReturn {
+  data:      HomeDataResponse | null;
+  isLoading: boolean;
+  error:     string | null;
 }
 
 /**
- * 홈 진행 행사 섹션 — 모든 이벤트 카테고리 통합 최신 N건
- * (학생회 행사 + 스포츠라이트 + 체육대회/이현제)
+ * 홈 통합 데이터 훅 — notices / events / gallery / archive 한 번에 로드
+ *
+ * Worker /home-data 엔드포인트를 호출하여 기존 4번의 API 호출을 1번으로 줄입니다.
+ * 홈 컴포넌트 어디서 호출해도 3초 이내에는 Fetch가 1번만 실행됩니다.
  */
+export function useHomeData(): UseHomeDataReturn {
+  const [data,      setData]    = useState<HomeDataResponse | null>(null);
+  const [isLoading, setLoading] = useState(true);
+  const [error,     setError]   = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+
+    fetchHomeDataOnce()
+      .then((res) => { setData(res); })
+      .catch((err: Error) => {
+        console.warn('[useNotion/useHomeData]', err);
+        setError('홈 데이터를 불러올 수 없습니다.');
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { data, isLoading, error };
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 홈 전용 훅 — useHomeData()에 위임 (하위 호환 유지)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/** 홈 공지사항 위젯 — useHomeData().notices 반환 */
+export function useHomeNotices(): UsePostsReturn {
+  const { data, isLoading, error } = useHomeData();
+  return { data: data?.notices ?? [], isLoading, error };
+}
+
+/** 홈 진행 행사 섹션 — useHomeData().events 반환 */
 export function useHomeEvents(): UsePostsReturn {
-  return usePosts({
-    categories: [CATEGORIES.events, CATEGORIES.gallery, CATEGORIES.sportsDay],
-    perPage:    HOME_EVENTS_COUNT,
-  });
+  const { data, isLoading, error } = useHomeData();
+  return { data: data?.events ?? [], isLoading, error };
 }
 
-/** 홈 갤러리 섹션 (스포츠라이트 최신 N건) */
+/** 홈 갤러리 섹션 — useHomeData().gallery 반환 */
 export function useHomeGallery(): UsePostsReturn {
-  return usePosts({ category: CATEGORIES.gallery, perPage: HOME_GALLERY_COUNT });
+  const { data, isLoading, error } = useHomeData();
+  return { data: data?.gallery ?? [], isLoading, error };
 }
 
-/** 홈 자료실 섹션 (회의록 + 기타자료실 최신 N건) */
+/** 홈 자료실 섹션 — useHomeData().archive 반환 */
 export function useHomeArchive(): UsePostsReturn {
-  return usePosts({
-    categories: [CATEGORIES.minutes, CATEGORIES.resourcesEtc],
-    perPage: HOME_ARCHIVE_COUNT,
-  });
+  const { data, isLoading, error } = useHomeData();
+  return { data: data?.archive ?? [], isLoading, error };
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -416,4 +461,47 @@ export function useClubPostUnified(identifier: string | null): UseClubPostReturn
   const bySlug = useClubPostBySlug(isId ? null : identifier);
 
   return isId ? byId : bySlug;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// useClubPostsByClub — 특정 동아리의 활동 게시글 목록
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/**
+ * 특정 동아리(clubAddress = 동아리의 페이지주소/slug)에 속한 게시글 목록.
+ * ClubDetailPage 하단에 동아리 활동 기록을 표시할 때 사용합니다.
+ *
+ * @param clubAddress - 동아리의 「페이지주소」 값 (예: 'bora-dance'). null이면 요청 안 함.
+ */
+export function useClubPostsByClub(clubAddress: string | null): UseClubPostsReturn {
+  const [data,      setData]    = useState<ClubPostData[]>([]);
+  const [isLoading, setLoading] = useState(false);
+  const [error,     setError]   = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!clubAddress) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+
+    setData([]);
+    setLoading(true);
+    setError(null);
+
+    const controller = new AbortController();
+
+    fetchClubPostsByClub(clubAddress, controller.signal)
+      .then((res) => setData(res.results))
+      .catch((err: Error) => {
+        if (err.name === 'AbortError') return;
+        console.warn('[useNotion/useClubPostsByClub]', err);
+        setError('활동 기록을 불러올 수 없습니다.');
+      })
+      .finally(() => setLoading(false));
+
+    return () => controller.abort();
+  }, [clubAddress]);
+
+  return { data, isLoading, error };
 }

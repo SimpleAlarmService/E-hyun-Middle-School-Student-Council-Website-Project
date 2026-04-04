@@ -22,6 +22,8 @@ import {
   EventCard,
   Footer,
 } from './components/Components';
+import { SearchModal } from './components/SearchModal';
+import { InstallBanner } from './components/InstallBanner';
 import { MealCard } from './components/MealCard';
 import { SchoolInfoCard } from './components/SchoolInfoCard';
 import { TimeTableCard } from './components/TimeTableCard';
@@ -325,6 +327,7 @@ const HomePage = ({ navigate }: HomePageProps) => {
 function parseInitialHash(): { page: string; postId: string | null } {
   try {
     const hash = window.location.hash.replace(/^#\/?/, '');
+
     // #club/<slug>       → 자율동아리 상세
     if (hash.startsWith('club/') && !hash.startsWith('club-post/')) {
       const slug = hash.replace('club/', '').trim();
@@ -335,6 +338,14 @@ function parseInitialHash(): { page: string; postId: string | null } {
       const slug = hash.replace('club-post/', '').trim();
       if (slug) return { page: 'club-post-detail', postId: slug };
     }
+    // 검색 결과 딥링크 (/#notice-detail/<id> 등)
+    const deepLinkRoutes = ['notice-detail', 'event-detail', 'ehbs-detail'] as const;
+    for (const route of deepLinkRoutes) {
+      if (hash.startsWith(`${route}/`)) {
+        const id = hash.slice(route.length + 1).trim();
+        if (id) return { page: route, postId: id };
+      }
+    }
   } catch { /* ignore */ }
   return { page: 'home', postId: null };
 }
@@ -343,6 +354,16 @@ export default function App() {
   const initial = parseInitialHash();
   const [currentPage, setCurrentPage]       = useState(initial.page);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(initial.postId);
+  const [isSearchOpen,  setIsSearchOpen]    = useState(false);
+  /**
+   * 활동 게시글 상세(club-post-detail)에서 뒤로 가기 시 돌아갈 위치.
+   * - 동아리 상세(club-detail)에서 진입 → { page: 'club-detail', id: clubSlug }
+   * - 활동 기록 목록(clubs-gallery)에서 진입 → { page: 'clubs-gallery', id: null }
+   */
+  const [postReturnTo, setPostReturnTo] = useState<{ page: string; id: string | null }>({
+    page: 'clubs-gallery',
+    id: null,
+  });
 
   /**
    * 내비게이션 함수
@@ -363,6 +384,18 @@ export default function App() {
     } else {
       window.history.replaceState(null, '', `#${page}`);
     }
+  }, []);
+
+  // Ctrl+K → 검색 모달 열기
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
   }, []);
 
   // 페이지 이동 시 최상단으로 스크롤
@@ -457,6 +490,11 @@ export default function App() {
           <ClubDetailPage
             clubIdentifier={selectedPostId}
             onBack={() => navigate('clubs')}
+            onSelectPost={(id, slug) => {
+              // 동아리 상세에서 활동 게시글 클릭 → 돌아올 때 이 동아리 상세로
+              setPostReturnTo({ page: 'club-detail', id: selectedPostId });
+              navigate('club-post-detail', slug || id);
+            }}
           />
         ) : (
           <ClubsPage onSelectClub={(id, slug) => navigate('club-detail', slug || id)} />
@@ -465,7 +503,11 @@ export default function App() {
       case 'clubs-gallery':
         return (
           <ClubGalleryPage
-            onSelectPost={(id, slug) => navigate('club-post-detail', slug || id)}
+            onSelectPost={(id, slug) => {
+              // 활동 기록 목록에서 게시글 클릭 → 돌아올 때 목록으로
+              setPostReturnTo({ page: 'clubs-gallery', id: null });
+              navigate('club-post-detail', slug || id);
+            }}
           />
         );
 
@@ -473,11 +515,14 @@ export default function App() {
         return selectedPostId ? (
           <ClubPostDetailPage
             postIdentifier={selectedPostId}
-            onBack={() => navigate('clubs-gallery')}
+            onBack={() => navigate(postReturnTo.page, postReturnTo.id ?? undefined)}
           />
         ) : (
           <ClubGalleryPage
-            onSelectPost={(id, slug) => navigate('club-post-detail', slug || id)}
+            onSelectPost={(id, slug) => {
+              setPostReturnTo({ page: 'clubs-gallery', id: null });
+              navigate('club-post-detail', slug || id);
+            }}
           />
         );
 
@@ -494,9 +539,22 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      <Header onNavigate={navigate} />
+      <Header
+        onNavigate={navigate}
+        onSearchOpen={() => setIsSearchOpen(true)}
+      />
       {renderPage()}
       <Footer onNavigate={navigate} />
+
+      {/* 통합검색 모달 */}
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        navigate={navigate}
+      />
+
+      {/* PWA 설치 배너 */}
+      <InstallBanner />
     </div>
   );
 }

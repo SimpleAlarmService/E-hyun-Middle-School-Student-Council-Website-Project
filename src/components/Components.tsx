@@ -79,7 +79,13 @@ const InlineEmpty = ({ message }: { message: string }) => (
 // Header
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-export const Header = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
+export const Header = ({
+  onNavigate,
+  onSearchOpen,
+}: {
+  onNavigate:   (page: string) => void;
+  onSearchOpen?: () => void;
+}) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // subItems: { label: 표시 텍스트, id: 라우트 ID }
@@ -137,15 +143,28 @@ export const Header = ({ onNavigate }: { onNavigate: (page: string) => void }) =
             ))}
           </nav>
 
-          {/* 모바일 햄버거 버튼 */}
-          <div className="md:hidden">
+          {/* 검색 버튼 + 모바일 햄버거 */}
+          <div className="flex items-center gap-1">
+            {/* 통합검색 버튼 — 데스크톱·모바일 공통 */}
             <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2 text-slate-600 hover:bg-slate-100 rounded-md"
-              aria-label={isMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
+              onClick={onSearchOpen}
+              className="p-2 text-slate-600 hover:bg-slate-100 hover:text-blue-700 rounded-md transition-colors"
+              aria-label="통합검색 열기"
+              title="통합검색 (Ctrl+K)"
             >
-              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              <Search size={20} />
             </button>
+
+            {/* 모바일 햄버거 버튼 */}
+            <div className="md:hidden">
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="p-2 text-slate-600 hover:bg-slate-100 rounded-md"
+                aria-label={isMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
+              >
+                {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            </div>
           </div>
         </div>
       </div>

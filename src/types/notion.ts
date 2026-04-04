@@ -25,7 +25,7 @@ export interface PostCardData {
   excerpt: string;
   /** 본문 텍스트 (DB 속성 「내용」) */
   content: string;
-  /** 진행 여부 Select 값 (예: '예정', '진행중', '종료') — 공지사항 제외 */
+  /** 진행 여부 값 (Select → '예정' | '진행중' | '완료' | '') — 공지사항 제외 */
   eventStatus: string;
   /** 대표 이미지 URL */
   imageUrl: string;
@@ -53,12 +53,12 @@ export interface ClubData {
   name: string;
   /**
    * 고유 슬러그 (예: bora-dance)
-   * — Notion DB 「slug」Text 속성에 직접 입력
+   * — Notion DB 「slug」Select 속성에 직접 입력
    * — URL 딥링크 라우팅에 사용. 없으면 빈 문자열
    */
   slug: string;
-  /** 활동분야 (예: 공연, 체육, 학술, 예술, 기타) */
-  field: string;
+  /** 활동분야 배열 — Notion MultiSelect (예: ['공연', '학술']) */
+  field: string[];
   /** 짧은 설명 (목록 카드 미리보기용) */
   description: string;
   /** 상세 설명 (상세 페이지에서만 표시) */
@@ -67,6 +67,8 @@ export interface ClubData {
   status: string;
   /** 대회참가 여부 */
   hasCompetition: boolean;
+  /** 현재 멤버 모집 중 여부 (Notion DB 「모집중」Checkbox) */
+  isRecruiting: boolean;
   /** 정렬순서 — 낮을수록 목록 앞쪽에 표시 (없으면 999) */
   order: number;
   /** 대표이미지 URL */
@@ -100,11 +102,17 @@ export interface ClubPostData {
   title: string;
   /**
    * 고유 슬러그 (예: bora-2025-showcase)
-   * — Notion DB 「slug」Text 속성에 입력
+   * — Notion DB 「페이지주소」 또는 「slug」Text 속성에 입력
    * — URL 딥링크에 사용. 없으면 빈 문자열
    */
   slug: string;
-  /** 작성한 동아리 이름 (Select 속성 「동아리명」) */
+  /**
+   * 이 게시글이 속한 동아리의 페이지주소 (slug)
+   * — Notion DB 「소속동아리주소」Text 속성에 입력
+   * — ClubDetailPage에서 동아리 활동 게시글 필터링에 사용
+   */
+  belongsToAddress: string;
+  /** 작성한 동아리 이름 (Select 속성 「동아리명」, 없으면 소속동아리주소) */
   clubName: string;
   /** 요약 텍스트 (카드 미리보기) */
   summary: string;
@@ -138,6 +146,21 @@ export interface ClubPostDetailResponse {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Worker 응답 타입
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/**
+ * GET /home-data 응답
+ * 홈 화면 4개 섹션 데이터를 한 번의 요청으로 반환합니다.
+ */
+export interface HomeDataResponse {
+  /** 공지사항 최신 10건 (전체 카테고리) */
+  notices: PostCardData[];
+  /** 진행 행사 최신 3건 (학생회 행사 + 스포츠라이트 + 체육대회/이현제) */
+  events:  PostCardData[];
+  /** 갤러리 최신 4건 (스포츠라이트) */
+  gallery: PostCardData[];
+  /** 자료실 최신 4건 (회의록 + 기타자료실) */
+  archive: PostCardData[];
+}
 
 /** GET /posts 응답 */
 export interface PostListResponse {

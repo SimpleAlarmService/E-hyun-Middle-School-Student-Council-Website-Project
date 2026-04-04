@@ -11,6 +11,7 @@ import type {
   PostListResponse, PostDetailResponse,
   ClubListResponse, ClubDetailResponse,
   ClubPostListResponse, ClubPostDetailResponse,
+  HomeDataResponse,
 } from '../types/notion';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -40,6 +41,23 @@ export function notionImageUrl(rawUrl: string): string {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // API 함수
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/**
+ * 홈 통합 데이터 — 4개 섹션(notices/events/gallery/archive)을 한 번에 반환
+ * Worker의 /home-data 엔드포인트를 호출합니다 (캐시 TTL: 60초).
+ */
+export async function fetchHomeData(signal?: AbortSignal): Promise<HomeDataResponse> {
+  const res = await fetch(`${WORKER_BASE_URL}/home-data`, { signal });
+  if (!res.ok) throw new Error(`Worker ${res.status}`);
+  const json = await res.json() as HomeDataResponse;
+  // Notion S3 URL → Worker 이미지 프록시 URL 변환 (만료 방지)
+  return {
+    notices: json.notices.map((p) => ({ ...p, imageUrl: notionImageUrl(p.imageUrl) })),
+    events:  json.events.map((p)  => ({ ...p, imageUrl: notionImageUrl(p.imageUrl) })),
+    gallery: json.gallery.map((p) => ({ ...p, imageUrl: notionImageUrl(p.imageUrl) })),
+    archive: json.archive.map((p) => ({ ...p, imageUrl: notionImageUrl(p.imageUrl) })),
+  };
+}
 
 export interface FetchPostsParams {
   category?:   string;
@@ -155,6 +173,23 @@ export async function fetchClubPostBySlug(slug: string, signal?: AbortSignal): P
   return {
     ...json,
     post: { ...json.post, imageUrl: notionImageUrl(json.post.imageUrl) },
+  };
+}
+
+/** 특정 동아리의 활동 게시글 목록 조회 (소속동아리주소 기반) */
+export async function fetchClubPostsByClub(
+  clubAddress: string,
+  signal?: AbortSignal,
+): Promise<ClubPostListResponse> {
+  const res = await fetch(
+    `${WORKER_BASE_URL}/club-posts/by-club/${encodeURIComponent(clubAddress)}`,
+    { signal },
+  );
+  if (!res.ok) throw new Error(`Worker ${res.status}`);
+  const json = await res.json() as ClubPostListResponse;
+  return {
+    ...json,
+    results: json.results.map((p) => ({ ...p, imageUrl: notionImageUrl(p.imageUrl) })),
   };
 }
 

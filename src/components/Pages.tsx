@@ -41,7 +41,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { CATEGORIES } from '../lib/config';
-import { usePosts, usePost, useClubs, useClubUnified, useClubPosts, useClubPostUnified } from '../hooks/useNotion';
+import { usePosts, usePost, useClubs, useClubUnified, useClubPosts, useClubPostUnified, useClubPostsByClub } from '../hooks/useNotion';
 import { deriveEventStatus, mapEventStatus } from '../lib/api';
 import type { PostCardData, NotionBlock, NotionRichText, ClubData, ClubPostData } from '../types/notion';
 
@@ -1083,18 +1083,26 @@ const ClubCard = ({
           <ImageIcon size={40} className="text-slate-300" />
         </div>
       )}
-      {/* 활동분야 배지 */}
-      {club.field && (
-        <span className={`absolute top-3 left-3 text-xs font-semibold px-2.5 py-1 rounded-full border ${fieldBadgeClass(club.field)}`}>
-          {club.field}
-        </span>
+      {/* 활동분야 배지 (multi_select → 여러 배지 표시) */}
+      {club.field.length > 0 && (
+        <div className="absolute top-3 left-3 flex flex-wrap gap-1">
+          {club.field.map((f) => (
+            <span key={f} className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${fieldBadgeClass(f)}`}>
+              {f}
+            </span>
+          ))}
+        </div>
       )}
-      {/* 대회참가 아이콘 */}
-      {club.hasCompetition && (
+      {/* 모집중 / 대회참가 아이콘 (right-side — 모집중 우선) */}
+      {club.isRecruiting ? (
+        <span className="absolute top-3 right-3 px-2 py-0.5 text-xs font-bold rounded-full bg-blue-500 text-white shadow">
+          모집중
+        </span>
+      ) : club.hasCompetition ? (
         <span className="absolute top-3 right-3 w-7 h-7 rounded-full bg-amber-400 flex items-center justify-center shadow">
           <Trophy size={13} className="text-white" />
         </span>
-      )}
+      ) : null}
     </div>
 
     {/* 텍스트 정보 */}
@@ -1123,12 +1131,12 @@ export const ClubsPage = ({
   const { data: clubs, isLoading, error } = useClubs();
   const [activeField, setActiveField] = useState(FIELD_ALL);
 
-  // 활동분야 목록 (동적으로 DB에서 추출)
-  const fields = [FIELD_ALL, ...Array.from(new Set(clubs.map((c) => c.field).filter(Boolean)))];
+  // 활동분야 목록 — multi_select 이므로 flatMap으로 모든 분야 추출
+  const fields = [FIELD_ALL, ...Array.from(new Set(clubs.flatMap((c) => c.field)))];
 
   const filtered = activeField === FIELD_ALL
     ? clubs
-    : clubs.filter((c) => c.field === activeField);
+    : clubs.filter((c) => c.field.includes(activeField));
 
   return (
     <div className="pb-12">
@@ -1201,6 +1209,72 @@ export const ClubsPage = ({
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ClubPostCard — 활동 기록 카드 (ClubDetailPage · ClubGalleryPage 공용)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/** 동아리 활동 게시글 카드 */
+const ClubPostCard = ({
+  post,
+  onSelect,
+}: {
+  post:     ClubPostData;
+  onSelect: (id: string, slug: string) => void;
+}) => (
+  <div
+    className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-lg hover:border-blue-200 transition-all cursor-pointer group flex flex-col"
+    onClick={() => onSelect(post.id, post.slug)}
+    role="button"
+    tabIndex={0}
+    aria-label={`${post.title} 읽기`}
+    onKeyDown={(e) => e.key === 'Enter' && onSelect(post.id, post.slug)}
+  >
+    {/* 대표이미지 */}
+    <div className="h-44 bg-slate-100 relative overflow-hidden shrink-0">
+      {post.imageUrl ? (
+        <img
+          src={post.imageUrl}
+          alt={post.imageAlt || post.title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          loading="lazy"
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
+          <FileText size={36} className="text-slate-300" />
+        </div>
+      )}
+      {/* 동아리명 배지 */}
+      {post.clubName && (
+        <span className="absolute top-3 left-3 text-xs font-semibold px-2.5 py-1 rounded-full border bg-white/90 text-slate-700 border-slate-200 backdrop-blur-sm">
+          {post.clubName}
+        </span>
+      )}
+    </div>
+
+    {/* 텍스트 */}
+    <div className="p-4 flex flex-col flex-1">
+      <h3 className="font-bold text-sm text-slate-900 mb-1.5 line-clamp-2 group-hover:text-blue-700 transition-colors leading-snug">
+        {post.title}
+      </h3>
+      {post.summary && (
+        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-2 flex-1">
+          {post.summary}
+        </p>
+      )}
+      <div className="flex items-center gap-2 text-xs text-slate-400 mt-auto pt-2 border-t border-slate-50">
+        <Calendar size={11} />
+        <span>{post.date}</span>
+        {post.author && post.author !== '학생자치회' && (
+          <>
+            <span>·</span>
+            <span>{post.author}</span>
+          </>
+        )}
+      </div>
+    </div>
+  </div>
+);
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ClubDetailPage — 동아리 상세
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1216,6 +1290,7 @@ function statusBadgeClass(status: string): string {
 export const ClubDetailPage = ({
   clubIdentifier,
   onBack,
+  onSelectPost,
 }: {
   /**
    * Notion 페이지 ID 또는 slug 중 하나.
@@ -1223,8 +1298,17 @@ export const ClubDetailPage = ({
    */
   clubIdentifier: string;
   onBack: () => void;
+  /** 활동 기록 카드 클릭 시 호출 (id: Notion UUID, slug: 페이지주소) */
+  onSelectPost?: (id: string, slug: string) => void;
 }) => {
   const { detail, isLoading, error } = useClubUnified(clubIdentifier);
+
+  // Rules of Hooks: early return 전에 모든 hook 호출
+  // detail이 없는 동안은 null을 전달해 비활성화
+  const {
+    data:      clubPosts,
+    isLoading: postsLoading,
+  } = useClubPostsByClub(detail?.club.slug ?? null);
 
   if (isLoading) {
     return (
@@ -1271,14 +1355,19 @@ export const ClubDetailPage = ({
 
           {/* 배지 모음 */}
           <div className="flex flex-wrap gap-2 mb-3">
-            {club.field && (
-              <span className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border font-medium ${fieldBadgeClass(club.field)}`}>
-                <Tag size={10} /> {club.field}
+            {club.field.map((f) => (
+              <span key={f} className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border font-medium ${fieldBadgeClass(f)}`}>
+                <Tag size={10} /> {f}
               </span>
-            )}
+            ))}
             {club.status && (
               <span className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border font-medium ${statusBadgeClass(club.status)}`}>
                 {club.status}
+              </span>
+            )}
+            {club.isRecruiting && (
+              <span className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-medium">
+                모집 중
               </span>
             )}
             {club.hasCompetition && (
@@ -1332,6 +1421,48 @@ export const ClubDetailPage = ({
         <article className="prose prose-slate max-w-none prose-headings:font-bold prose-a:text-blue-600 prose-img:rounded-lg">
           <NotionBlockRenderer blocks={blocks} hideEmptyMessage={!!(club.description || club.detailDesc)} />
         </article>
+
+        {/* ── 활동 기록 섹션 ─────────────────────────────────── */}
+        {club.slug && (
+          <section className="pt-6 border-t border-slate-200">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <BookOpen size={18} className="text-blue-500" />
+                활동 기록
+              </h2>
+            </div>
+
+            {postsLoading ? (
+              /* 스켈레톤 */
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-pulse">
+                    <div className="h-36 bg-slate-200" />
+                    <div className="p-3 space-y-2">
+                      <div className="h-3.5 bg-slate-200 rounded w-3/4" />
+                      <div className="h-3 bg-slate-100 rounded w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : clubPosts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-2 text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                <FileText size={24} />
+                <p className="text-sm">아직 등록된 활동 기록이 없습니다.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {clubPosts.map((post) => (
+                  <ClubPostCard
+                    key={post.id}
+                    post={post}
+                    onSelect={(id, slug) => onSelectPost?.(id, slug)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* 목록으로 */}
         <div className="pt-6 border-t border-slate-200">
@@ -1447,68 +1578,6 @@ export const ClubIntroPage = ({
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ClubGalleryPage — 동아리 활동 기록 게시판
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-/** 활동 기록 게시글 카드 */
-const ClubPostCard = ({
-  post,
-  onSelect,
-}: {
-  post:     ClubPostData;
-  onSelect: (id: string, slug: string) => void;
-}) => (
-  <div
-    className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-lg hover:border-blue-200 transition-all cursor-pointer group flex flex-col"
-    onClick={() => onSelect(post.id, post.slug)}
-    role="button"
-    tabIndex={0}
-    aria-label={`${post.title} 읽기`}
-    onKeyDown={(e) => e.key === 'Enter' && onSelect(post.id, post.slug)}
-  >
-    {/* 대표이미지 */}
-    <div className="h-44 bg-slate-100 relative overflow-hidden shrink-0">
-      {post.imageUrl ? (
-        <img
-          src={post.imageUrl}
-          alt={post.imageAlt || post.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          loading="lazy"
-        />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
-          <FileText size={36} className="text-slate-300" />
-        </div>
-      )}
-      {/* 동아리명 배지 */}
-      {post.clubName && (
-        <span className="absolute top-3 left-3 text-xs font-semibold px-2.5 py-1 rounded-full border bg-white/90 text-slate-700 border-slate-200 backdrop-blur-sm">
-          {post.clubName}
-        </span>
-      )}
-    </div>
-
-    {/* 텍스트 */}
-    <div className="p-4 flex flex-col flex-1">
-      <h3 className="font-bold text-sm text-slate-900 mb-1.5 line-clamp-2 group-hover:text-blue-700 transition-colors leading-snug">
-        {post.title}
-      </h3>
-      {post.summary && (
-        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-2 flex-1">
-          {post.summary}
-        </p>
-      )}
-      <div className="flex items-center gap-2 text-xs text-slate-400 mt-auto pt-2 border-t border-slate-50">
-        <Calendar size={11} />
-        <span>{post.date}</span>
-        {post.author && post.author !== '학생자치회' && (
-          <>
-            <span>·</span>
-            <span>{post.author}</span>
-          </>
-        )}
-      </div>
-    </div>
-  </div>
-);
 
 export const ClubGalleryPage = ({
   onSelectPost,
