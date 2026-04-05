@@ -338,10 +338,11 @@ async function handleList(env: Env, url: URL): Promise<Response> {
     ? await resolveDbId(env, env.NOTION_EHBS_DATABASE_ID)
     : await resolveDbId(env);
 
-  // 공개(Select is_not_empty) 필터 — 값이 있는 게시글만 표시 (예정/진행중/완료)
-  const filters: unknown[] = [
-    { property: '공개', select: { is_not_empty: true } },
-  ];
+  // EHBS 전용 DB는 별도 스키마(공개 속성 없음) → 필터 없이 전체 조회
+  // 메인 DB: 공개(Select is_not_empty) 필터 — 예정/진행중/완료 값이 있는 게시글만
+  const filters: unknown[] = isEhbs
+    ? []
+    : [{ property: '공개', select: { is_not_empty: true } }];
 
   // EHBS 전용 DB는 전체가 EHBS 게시물이므로 카테고리 필터 생략
   if (!isEhbs) {
@@ -366,10 +367,10 @@ async function handleList(env: Env, url: URL): Promise<Response> {
     : [{ property: '작성일', direction: 'descending' }];
 
   const requestBody: Record<string, unknown> = {
-    filter:    { and: filters },
     sorts,
     page_size: limit,
   };
+  if (filters.length > 0) requestBody.filter = { and: filters };
   if (cursor) requestBody.start_cursor = cursor;
 
   const data = await notionFetch(
