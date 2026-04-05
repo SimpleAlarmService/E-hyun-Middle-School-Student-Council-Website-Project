@@ -231,6 +231,7 @@ export const MainVisual = () => {
     {
       id:       2,
       bg:       'from-slate-800 to-slate-600',
+      image:    '/banner2.png',
       title:    '함께 만드는 더 나은 학교',
       subtitle: '여러분의 소중한 의견이 학교를 변화시킵니다',
     },
