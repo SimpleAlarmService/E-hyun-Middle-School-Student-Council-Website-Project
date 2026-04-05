@@ -4,21 +4,26 @@
  *
  * 브라우저가 PWA 설치 가능 조건을 만족했을 때 화면 하단에 작은 배너를 표시합니다.
  *
+ * ✅ 지원 브라우저 (Chromium 기반 전체 — beforeinstallprompt 공통 지원):
+ *   - Google Chrome
+ *   - Microsoft Edge
+ *   - Brave
+ *   - Opera
+ *   - Samsung Internet
+ *   - 기타 Chromium 기반 브라우저
+ *
+ * ❌ 미지원 (beforeinstallprompt 이벤트 없음):
+ *   - iOS Safari → Safari 공유 메뉴 → "홈 화면에 추가" 로 직접 설치
+ *   - Firefox
+ *
  * 동작 흐름:
- *   1. 브라우저가 beforeinstallprompt 이벤트 발생
- *      → 배너 표시
- *   2. "설치" 버튼 클릭
- *      → 브라우저 설치 프롬프트 실행
- *      → 사용자가 수락하면 배너 사라짐
- *   3. "×" 닫기 클릭
- *      → localStorage에 기록, 이후 방문에서 배너 미표시
- *   4. 이미 설치된 경우(appinstalled 이벤트)
- *      → 배너 사라짐
+ *   1. 브라우저가 beforeinstallprompt 이벤트 발생 → 배너 표시
+ *   2. "설치" 버튼 클릭 → 브라우저 설치 프롬프트 실행
+ *   3. "×" 닫기 클릭 → localStorage 기록, 이후 방문 미표시
+ *   4. appinstalled 이벤트 발생 → 배너 자동 제거
  *
  * 운영 참고:
  *   - DISMISSED_KEY 값을 바꾸면 배너 표시 여부가 초기화됩니다.
- *   - iOS Safari는 beforeinstallprompt를 지원하지 않으므로 배너가 표시되지 않습니다.
- *     (iOS에서는 Safari의 공유 메뉴 → "홈 화면에 추가"로 직접 설치 가능)
  */
 
 import { useState, useEffect } from 'react';

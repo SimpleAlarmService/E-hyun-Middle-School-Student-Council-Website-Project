@@ -1,9 +1,12 @@
 {
   "name": "EHSC Connect",
   "short_name": "EHSC",
+  "id": "/",
   "description": "이현중학교 학생자치회 공식 플랫폼 — 공지사항, 행사, 자료실을 한 곳에서 확인하세요.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
   "background_color": "#ffffff",
   "theme_color": "#1e3a5f",
   "lang": "ko",
